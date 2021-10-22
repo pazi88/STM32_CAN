@@ -20,6 +20,8 @@
 
 #include "STM32_CAN.h"
 
+stm32Can *pointerToClass; // declare a pointer to stm32Can class
+
 /* Constructor */
 stm32Can::stm32Can( CAN_HandleTypeDef* pCanHandle, int portNumber ) {
 
@@ -35,6 +37,7 @@ stm32Can::stm32Can( CAN_HandleTypeDef* pCanHandle, int portNumber ) {
 
 /* Init and start CAN */
 void stm32Can::begin( bool UseAltPins ) {
+	pointerToClass = this; // assign current instance to pointer
     init( n_pCanHandle, UseAltPins );
 }
 
@@ -221,10 +224,13 @@ void stm32Can::setBaudRate( uint32_t baudrate ) {
     //Error_Handler();
     DEBUG(Serial.println("stm32Can - error activating TX int"));
   }
-  DEBUG(Serial.println("stm32Can - CAN startet")); 
+  if (n_pCanHandle->Instance == CAN1) {DEBUG(Serial.println("stm32Can - CAN1 startet"));}
+  else {DEBUG(Serial.println("stm32Can - CAN2 startet"));}
 }
 
 bool stm32Can::write(CAN_message_t &msg, bool wait_sent) {
+  if (n_pCanHandle->Instance == CAN1) {DEBUG(Serial.println("stm32Can - CAN1 write"));}
+  else {DEBUG(Serial.println("stm32Can - CAN2 write"));}
   bool ret = true;
   uint32_t TxMailbox;
   CAN_TxHeaderTypeDef TxHeader;
@@ -265,6 +271,7 @@ bool stm32Can::write(CAN_message_t &msg, bool wait_sent) {
     }
 //  }
   __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
+  DEBUG(Serial.println("stm32Can - Write end"));
   return ret;
 }
 
@@ -660,7 +667,7 @@ extern "C" void HAL_CAN_TxMailbox0CompleteCallback( CAN_HandleTypeDef *CanHandle
   uint32_t TxMailbox;
   CAN_message_t txmsg;
   CAN_TxHeaderTypeDef TxHeader;
-  if ( removeFromRingBuffer(txRing, txmsg) )
+  if ( pointerToClass->removeFromRingBuffer(pointerToClass->txRing, txmsg) )
   {
     if ( txmsg.flags.extended == 1 ) // Extended ID when msg.flags.extended is 1
     {
@@ -687,7 +694,7 @@ extern "C" void HAL_CAN_TxMailbox1CompleteCallback( CAN_HandleTypeDef *CanHandle
   uint32_t TxMailbox;
   CAN_message_t txmsg;
   CAN_TxHeaderTypeDef TxHeader;
-  if ( Can1.removeFromRingBuffer(Can1.txRing, txmsg) )
+  if ( pointerToClass->removeFromRingBuffer(pointerToClass->txRing, txmsg) )
   {
     if ( txmsg.flags.extended == 1 ) // Extended ID when msg.flags.extended is 1
     {
@@ -714,7 +721,7 @@ extern "C" void HAL_CAN_TxMailbox2CompleteCallback( CAN_HandleTypeDef *CanHandle
   uint32_t TxMailbox;
   CAN_message_t txmsg;
   CAN_TxHeaderTypeDef TxHeader;
-  if ( Can1.removeFromRingBuffer(Can1.txRing, txmsg) )
+  if ( pointerToClass->removeFromRingBuffer(pointerToClass->txRing, txmsg) )
   {
     if ( txmsg.flags.extended == 1 ) // Extended ID when msg.flags.extended is 1
     {
@@ -767,12 +774,12 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback( CAN_HandleTypeDef *CanHandle 
 
     if (CanHandle->Instance == CAN1) 
     {
-      Can1.addToRingBuffer(Can1.rxRing, rxmsg);
+      pointerToClass->addToRingBuffer(pointerToClass->rxRing, rxmsg);
     }
 #ifdef CAN2
     else
     {
-      Can2.addToRingBuffer(Can2.rxRing, rxmsg);
+      pointerToClass->addToRingBuffer(pointerToClass->rxRing, rxmsg);
     }
 #endif
   }
