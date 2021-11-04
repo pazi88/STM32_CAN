@@ -1,4 +1,6 @@
 #include "STM32_CAN.h"
+STM32_CAN Can1( CAN1, DEF );
+//STM32_CAN Can1( CAN1, ALT );
 
 void setup() {
   Serial.begin(115200);
@@ -7,13 +9,11 @@ void setup() {
 }
 
 void loop() {
-  stm32Can Can0( &hcan1, 1 );
   uint8_t recv_ch = 1;
   static CAN_message_t CAN_TX_msg;
 
-  Can0.begin( false);
-  Can0.setBaudRate(500000);
-  Can0.enableFIFO();
+  Can1.begin();
+  Can1.setBaudRate(500000);
   uint8_t SecL = 0;
   while(1){
     if (SecL > 255){ SecL = 0;}
@@ -29,7 +29,7 @@ void loop() {
     CAN_TX_msg.buf[6] =  0x00; 
     CAN_TX_msg.buf[7] =  0x00;
   
-    Can0.write(CAN_TX_msg);
+    Can1.write(CAN_TX_msg);
 
     CAN_TX_msg.id = (0x7E8);
     CAN_TX_msg.len = 8;
@@ -42,7 +42,7 @@ void loop() {
     CAN_TX_msg.buf[6] =  0x00; 
     CAN_TX_msg.buf[7] =  0x00;
   
-    Can0.write(CAN_TX_msg);
+    Can1.write(CAN_TX_msg);
 
     CAN_TX_msg.id = (0xA63);
     CAN_TX_msg.len = 8;
@@ -56,7 +56,7 @@ void loop() {
     CAN_TX_msg.buf[7] =  SecL;
 
   
-    Can0.write(CAN_TX_msg);
+    Can1.write(CAN_TX_msg);
 
     CAN_TX_msg.id = (0x23);
     CAN_TX_msg.len = 8;
@@ -70,7 +70,7 @@ void loop() {
     CAN_TX_msg.buf[7] =  SecL;
 
   
-    Can0.write(CAN_TX_msg);
+    Can1.write(CAN_TX_msg);
 
     CAN_TX_msg.id = (0x55);
     CAN_TX_msg.len = 8;
@@ -84,7 +84,7 @@ void loop() {
     CAN_TX_msg.buf[7] =  SecL;
 
   
-    Can0.write(CAN_TX_msg);
+    Can1.write(CAN_TX_msg);
     Serial.print("Sent: ");
     Serial.println(SecL, HEX);
     SecL++;
