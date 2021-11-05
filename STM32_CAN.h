@@ -23,9 +23,6 @@ https://github.com/jiauka/STM32_CAN
 #define SIZE_TX_BUFFER  64 // transmit ring buffer default size
 #endif
 
-//#define DEBUG(x) x // Enable this to print debug messages, require serial connection
-#define DEBUG(x) "" // Debug disabled
-
 // This struct is directly copied from Teensy FlexCAN library to retain compatibility with it. Not all are in use with STM32.
 // Source: https://github.com/tonton81/FlexCAN_T4/
 
@@ -94,7 +91,7 @@ class STM32_CAN {
 
     void begin();
     void setBaudRate(uint32_t baud);
-    bool write( CAN_message_t &CAN_tx_msg );
+    bool write( CAN_message_t &CAN_tx_msg, bool sendMB = false );
     bool read( CAN_message_t &CAN_rx_msg );
 	// Manually set STM32 filter bank parameters
     bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, uint32_t filter_mode = CAN_FILTERMODE_IDMASK);
@@ -157,9 +154,11 @@ class STM32_CAN {
 };
 
 static STM32_CAN* _CAN1 = nullptr;
-static STM32_CAN* _CAN2 = nullptr;
 static CAN_HandleTypeDef     hcan1;
+#ifdef CAN2
+static STM32_CAN* _CAN2 = nullptr;
 static CAN_HandleTypeDef     hcan2;
+#endif
 
 #endif
 
