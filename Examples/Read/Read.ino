@@ -1,29 +1,18 @@
 #include "STM32_CAN.h"
 //STM32_CAN Can1( CAN1, DEF );
 //STM32_CAN Can1( CAN1, ALT );
-STM32_CAN Can0( CAN1, ALT_2 );
+STM32_CAN Can1( CAN1, ALT_2 );
 
 static CAN_message_t CAN_RX_msg;
-static CAN_message_t CAN_TX_msg;
 
 void setup() {
   Serial.begin(115200);
-  Can0.begin();
-  Can0.setBaudRate(500000);
-  CAN_TX_msg.id = (0x153);
-  CAN_TX_msg.len = 8;
-  CAN_TX_msg.buf[0] =  0x03;                    // sending 3 bytes
-  CAN_TX_msg.buf[1] =  0x00;                    // Same as query, except that 40h is added to the mode value. So:41h = show current data ,42h = freeze frame ,etc.
-  CAN_TX_msg.buf[2] =  0xB0;                    // pid code
-  CAN_TX_msg.buf[3] =  0x00;                    // A
-  CAN_TX_msg.buf[4] =  0x00;                    // B
-  CAN_TX_msg.buf[5] =  0x00; 
-  CAN_TX_msg.buf[6] =  0x00; 
-  CAN_TX_msg.buf[7] =  0x00;
+  Can1.begin();
+  Can1.setBaudRate(500000);
 }
 
 void loop() {
-  if (Can0.read(CAN_RX_msg) ) {
+  if (Can1.read(CAN_RX_msg) ) {
     Serial.print("Channel:");
     Serial.print(CAN_RX_msg.bus);
     Serial.print(" Standard ID:");
@@ -41,9 +30,6 @@ void loop() {
       Serial.println();
     } else {
        Serial.println(" Data: REMOTE REQUEST FRAME");
-    }
-    if (CAN_RX_msg.id == 0x316){
-    Can0.write(CAN_TX_msg);
     }
   }
 }
