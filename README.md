@@ -6,7 +6,11 @@ The library is created because at least currently (year 2021) there is no offici
 This library is based on several STM32 CAN example libraries linked below and it has been combined with few
 things from Teensy FlexCAN library to make it compatible with the CAN features that exist in speeduino for Teensy.
 Links to repositories that have helped with this:
+
 https://github.com/nopnop2002/Arduino-STM32-CAN
+
 https://github.com/J-f-Jensen/libraries/tree/master/STM32_CAN
+
 https://github.com/jiauka/STM32F1_CAN
+
 STM32 core: https://github.com/stm32duino/Arduino_Core_STM32
