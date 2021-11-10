@@ -9,5 +9,4 @@ Links to repositories that have helped with this:
 https://github.com/nopnop2002/Arduino-STM32-CAN
 https://github.com/J-f-Jensen/libraries/tree/master/STM32_CAN
 https://github.com/jiauka/STM32F1_CAN
-
 STM32 core: https://github.com/stm32duino/Arduino_Core_STM32
