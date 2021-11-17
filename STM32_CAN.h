@@ -108,12 +108,12 @@ class STM32_CAN {
 
   public:
     // Default buffer sizes are set to 16. But this can be changed by using constructor in main code.
-    STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16 );
+    STM32_CAN(CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     // Begin. By default the automatic retransmission is enabled. If it causes problems, use begin(false) to disable it.
-    void begin( bool retransmission = true );
+    void begin(bool retransmission = true);
     void setBaudRate(uint32_t baud);
-    bool write( CAN_message_t &CAN_tx_msg, bool sendMB = false );
-    bool read( CAN_message_t &CAN_rx_msg );
+    bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
+    bool read(CAN_message_t &CAN_rx_msg);
     // Manually set STM32 filter bank parameters
     bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_FIFO0);
     // Teensy FlexCAN style "set filter" -functions
@@ -151,12 +151,12 @@ class STM32_CAN {
   private:
     void      initializeFilters();
     bool      isInitialized() { return rx_buffer != 0; }
-    void      initRingBuffer( RingbufferTypeDef &ring, volatile CAN_message_t *buffer, uint32_t size );
-    void      initializeBuffers( void );
-    bool      isRingBufferEmpty( RingbufferTypeDef &ring );
-    uint32_t  ringBufferCount( RingbufferTypeDef &ring );
-    void      calculateBaudrate( CAN_HandleTypeDef *CanHandle, int Baudrate );
-    uint32_t  getAPB1Clock( void );
+    void      initRingBuffer(RingbufferTypeDef &ring, volatile CAN_message_t *buffer, uint32_t size);
+    void      initializeBuffers(void);
+    bool      isRingBufferEmpty(RingbufferTypeDef &ring);
+    uint32_t  ringBufferCount(RingbufferTypeDef &ring);
+    void      calculateBaudrate(CAN_HandleTypeDef *CanHandle, int Baudrate);
+    uint32_t  getAPB1Clock(void);
 
     volatile CAN_message_t *rx_buffer;
     volatile CAN_message_t *tx_buffer;
