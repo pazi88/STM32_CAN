@@ -3,13 +3,17 @@ This is universal CAN library for STM32 that was made to be used with Speeduino 
 It should support all STM32 MCUs that are also supported in stm32duino Arduino_Core_STM32 and supports up to 3x CAN busses.
 The library is created because at least currently (year 2021) there is no official CAN library in the STM32 core.
 This library is based on several STM32 CAN example libraries linked below and it has been combined with few
-things from Teensy FlexCAN library to make it compatible with the CAN features that exist in speeduino for Teensy.
+things from Teensy FlexCAN library to make it compatible with CAN coding projects made for Teensy.
 Links to repositories that have helped with this:
 https://github.com/nopnop2002/Arduino-STM32-CAN
 https://github.com/J-f-Jensen/libraries/tree/master/STM32_CAN
 https://github.com/jiauka/STM32F1_CAN
 
 STM32 core: https://github.com/stm32duino/Arduino_Core_STM32
+
+IMPORTANT NOTE! To use this library, CAN module needs to be enabled in HAL drivers. If PIO is used, it's enough
+to add -DHAL_CAN_MODULE_ENABLED as build flag. With Arduino IDE it's easiest to create hal_conf_extra.h -file
+to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See examples for this.
 */
 
 #ifndef STM32_CAN_H
@@ -110,7 +114,7 @@ class STM32_CAN {
     // Default buffer sizes are set to 16. But this can be changed by using constructor in main code.
     STM32_CAN(CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     // Begin. By default the automatic retransmission is enabled. If it causes problems, use begin(false) to disable it.
-    void begin(bool retransmission = true);
+    void begin(bool retransmission = false);
     void setBaudRate(uint32_t baud);
     bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
     bool read(CAN_message_t &CAN_rx_msg);
