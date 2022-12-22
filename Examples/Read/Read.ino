@@ -25,7 +25,12 @@ void loop() {
   if (Can.read(CAN_RX_msg) ) {
     Serial.print("Channel:");
     Serial.print(CAN_RX_msg.bus);
-    Serial.print(" Standard ID:");
+    if (CAN_RX_msg.flags.extended == false) {
+      Serial.print(" Standard ID:");
+    }
+    else {
+      Serial.print(" Extended ID:");
+    }
     Serial.print(CAN_RX_msg.id, HEX);
 
     Serial.print(" DLC: ");

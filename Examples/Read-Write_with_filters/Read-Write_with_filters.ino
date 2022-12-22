@@ -12,9 +12,11 @@ static CAN_message_t CAN_inMsg;
 // This will use PA11/12 pins for CAN1 and set RX-buffer size to 64-messages. TX-buffer size is kept at default 16.
 STM32_CAN Can( CAN1, DEF, RX_SIZE_64, TX_SIZE_16 );
 
+uint8_t Counter;
+
 void SendData()  // Send can messages in 50Hz phase from timer interrupt.
 {
-  if (Counter > 255){ Counter = 0;}
+  if (Counter >= 255){ Counter = 0;}
   
   // Only the counter value is updated to the 3 messages sent out.
   CAN_outMsg_1.buf[3] =  Counter; 
@@ -34,18 +36,23 @@ void SendData()  // Send can messages in 50Hz phase from timer interrupt.
 void readCanMessage()  // Read data from CAN bus and print out the messages to serial bus. Note that only message ID's that pass filters are read.
 {
   Serial.print("Channel:");
-  Serial.print(CAN_RX_msg.bus);
-  Serial.print(" Standard ID:");
-  Serial.print(CAN_RX_msg.id, HEX);
+  Serial.print(CAN_inMsg.bus);
+  if (CAN_inMsg.flags.extended == false) {
+    Serial.print(" Standard ID:");
+  }
+  else {
+    Serial.print(" Extended ID:");
+  }
+  Serial.print(CAN_inMsg.id, HEX);
 
   Serial.print(" DLC: ");
-  Serial.print(CAN_RX_msg.len);
-  if (CAN_RX_msg.flags.remote == false) {
+  Serial.print(CAN_inMsg.len);
+  if (CAN_inMsg.flags.remote == false) {
      Serial.print(" buf: ");
-    for(int i=0; i<CAN_RX_msg.len; i++) {
+    for(int i=0; i<CAN_inMsg.len; i++) {
       Serial.print("0x"); 
-      Serial.print(CAN_RX_msg.buf[i], HEX); 
-      if (i != (CAN_RX_msg.len-1))  Serial.print(" ");
+      Serial.print(CAN_inMsg.buf[i], HEX); 
+      if (i != (CAN_inMsg.len-1))  Serial.print(" ");
     }
     Serial.println();
   } else {
@@ -54,6 +61,7 @@ void readCanMessage()  // Read data from CAN bus and print out the messages to s
 }
 
 void setup(){
+  Counter = 0;
   Serial.begin(115200);
   
   Can.begin();
@@ -118,7 +126,7 @@ void loop() {
   // The actual code that is being used will be done to main loop as usual.
 
   // We only read data from CAN bus if there is frames received, so that main code can do it's thing efficiently.
-  while (Can1.read(CAN_inMsg) ) 
+  while (Can.read(CAN_inMsg) ) 
   {
     readCanMessage();
   }
