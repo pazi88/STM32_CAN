@@ -1,9 +1,9 @@
 # CAN bus Library for Arduino STM32
 
 This is universal CAN library for STM32 Arduino use. Originally this was created to be used with Speeduino EFI and other
-CAN bus projects used in car enviroment. But has since grown into universal CAN bus library for Arduino STM32.
+CAN bus projects used in car environment. But has since grown into universal CAN bus library for Arduino STM32.
 This library should support all STM32 MCUs that are also supported in stm32duino Arduino_Core_STM32 and supports 
-up to 3x CAN busses. This library is based on several STM32 CAN example libraries linked below and it has been 
+up to 3x CAN buses. This library is based on several STM32 CAN example libraries linked below and it has been 
 combined with few things from Teensy FlexCAN library to make it compatible with CAN coding projects made for Teensy.
 Links to repositories that have helped with this:
 

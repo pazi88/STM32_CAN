@@ -40,7 +40,7 @@ void loop() {
     Can.write(CAN_TX_msg);
 
     CAN_TX_msg.id = (0x1AC32CF5);
-    CAN_TX_msg.flags.extended = 1;  // To enable extented ID.
+    CAN_TX_msg.flags.extended = 1;  // To enable extended ID.
     CAN_TX_msg.len = 8;
     CAN_TX_msg.buf[0] =  0x03;
     CAN_TX_msg.buf[1] =  0x41;
