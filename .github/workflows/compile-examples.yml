@@ -1,0 +1,22 @@
+name: Compile Examples
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  compile-examples-stm32:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3    
+      - name: Compile STM32 example
+        uses: arduino/compile-sketches@main
+        with:
+          platforms: |
+            - name: "STM32:stm32"
+              source-url: https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/master/STM32/package_stm_index.json
+          fqbn: "STM32:stm32:Nucleo_144"
+          libraries: |
+            - source-path: ./ 
