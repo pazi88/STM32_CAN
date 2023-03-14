@@ -41,6 +41,14 @@ typedef struct CAN_message_t {
   bool seq = 0;            // sequential frames
 } CAN_message_t;
 
+typedef struct {
+  uint32_t baudrate;
+  uint16_t prescaler;
+  uint8_t time_quanta;
+  uint8_t timeseg1;
+  uint8_t timeseg2;
+} Baudrate_entry_t;
+
 typedef enum CAN_PINS {DEF, ALT, ALT_2,} CAN_PINS;
 
 typedef enum RXQUEUE_TABLE {
@@ -133,7 +141,7 @@ class STM32_CAN {
     void enableFIFO(bool status = 1);
     void enableMBInterrupts();
     void disableMBInterrupts();
- 
+
     // These are public because these are also used from interrupts.
     typedef struct RingbufferTypeDef {
       volatile uint16_t head;
@@ -141,7 +149,7 @@ class STM32_CAN {
       uint16_t size;
       volatile CAN_message_t *buffer;
     } RingbufferTypeDef;
-  
+
     RingbufferTypeDef rxRing;
     RingbufferTypeDef txRing;
 
@@ -151,7 +159,7 @@ class STM32_CAN {
   protected:
     uint16_t sizeRxBuffer;
     uint16_t sizeTxBuffer;
-  
+
   private:
     void      initializeFilters();
     bool      isInitialized() { return rx_buffer != 0; }
@@ -160,11 +168,33 @@ class STM32_CAN {
     bool      isRingBufferEmpty(RingbufferTypeDef &ring);
     uint32_t  ringBufferCount(RingbufferTypeDef &ring);
     void      calculateBaudrate(CAN_HandleTypeDef *CanHandle, int Baudrate);
+    void      setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescaler, uint8_t timeseg1,
+                                                              uint8_t timeseg2, uint8_t sjw);
     uint32_t  getAPB1Clock(void);
 
     volatile CAN_message_t *rx_buffer;
     volatile CAN_message_t *tx_buffer;
-    
+
+    static constexpr Baudrate_entry_t BAUD_RATE_TABLE_48M[] {
+      {
+        1000000, 3, 16, 13, 2
+      },
+      {
+        800000, 4, 15, 12, 2
+      },
+      {
+        500000, 6, 16, 13, 2
+      },
+      {
+        250000, 12, 16, 13, 2
+      },
+      {
+        125000, 24, 16, 13, 2
+      },
+      {
+        100000, 30, 16, 13, 2
+      }
+    };
     bool     _canIsActive = false;
     CAN_PINS _pins;
 
@@ -173,16 +203,4 @@ class STM32_CAN {
 
 };
 
-static STM32_CAN* _CAN1 = nullptr;
-static CAN_HandleTypeDef     hcan1;
-#ifdef CAN2
-static STM32_CAN* _CAN2 = nullptr;
-static CAN_HandleTypeDef     hcan2;
 #endif
-#ifdef CAN3
-static STM32_CAN* _CAN3 = nullptr;
-static CAN_HandleTypeDef     hcan3;
-#endif
-
-#endif
-

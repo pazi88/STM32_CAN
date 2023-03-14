@@ -1,12 +1,50 @@
 #include "STM32_CAN.h"
 
+constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_48M[];
+
+static STM32_CAN* _CAN1 = nullptr;
+static CAN_HandleTypeDef     hcan1;
+uint32_t test = 0;
+#ifdef CAN2
+static STM32_CAN* _CAN2 = nullptr;
+static CAN_HandleTypeDef     hcan2;
+#endif
+#ifdef CAN3
+static STM32_CAN* _CAN3 = nullptr;
+static CAN_HandleTypeDef     hcan3;
+#endif
+
+extern "C" bool Disable_Interrupts(void)
+{
+  /* Important function 1 */
+  uint32_t prim;
+
+  /* Do some stuff here which can be interrupted */
+
+  /* Read PRIMASK register, check interrupt status before you disable them */
+  /* Returns 0 if they are enabled, or non-zero if disabled */
+  prim = __get_PRIMASK();
+
+  /* Disable interrupts */
+  noInterrupts();
+
+  return prim == 0;
+}
+
+extern "C" void Enable_Interrupts(bool interruptsEnabled)
+{
+  if(interruptsEnabled) {
+    interrupts();
+  }
+}
+
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize ) {
 
   if (_canIsActive) { return; }
-  
+
   sizeRxBuffer=rxSize;
   sizeTxBuffer=txSize;
-  
+
   if (canPort == CAN1)
   {
     _CAN1 = this;
@@ -36,19 +74,19 @@ void STM32_CAN::begin( bool retransmission ) {
 
   // exit if CAN already is active
   if (_canIsActive) return;
-  
+
   _canIsActive = true;
-  
+
   GPIO_InitTypeDef GPIO_InitStruct;
-  
+
   initializeBuffers();
-  
+
   // Configure CAN
   if (_canPort == CAN1)
   {
     //CAN1
     __HAL_RCC_CAN1_CLK_ENABLE();
-    
+
     if (_pins == ALT)
     {
       __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -61,13 +99,13 @@ void STM32_CAN::begin( bool retransmission ) {
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
       GPIO_InitStruct.Pin = GPIO_PIN_9;
       #else  // Without AFIO, this is the way to set the pins for CAN.
-      GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
+      GPIO_InitStruct.Alternate = GPIO_AF8_CAN1;
       GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
       GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
       #endif
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    } 
+    }
      if (_pins == DEF)
      {
       __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -116,10 +154,10 @@ void STM32_CAN::begin( bool retransmission ) {
     // NVIC configuration for CAN1 Transmission complete interrupt
     HAL_NVIC_SetPriority(CAN1_TX_IRQn, 15, 0); // 15 is lowest possible priority
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
-    
+
     n_pCanHandle->Instance = CAN1;
   }
-#ifdef CAN2  
+#ifdef CAN2
   else if (_canPort == CAN2)
   {
     //CAN2
@@ -143,7 +181,7 @@ void STM32_CAN::begin( bool retransmission ) {
       #endif
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    } 
+    }
     if (_pins == DEF) {
       __HAL_RCC_GPIOB_CLK_ENABLE();
       #if defined(__HAL_RCC_AFIO_CLK_ENABLE)
@@ -169,12 +207,12 @@ void STM32_CAN::begin( bool retransmission ) {
     // NVIC configuration for CAN2 Transmission complete interrupt
     HAL_NVIC_SetPriority(CAN2_TX_IRQn, 15, 0); // 15 is lowest possible priority
     HAL_NVIC_EnableIRQ(CAN2_TX_IRQn);
-    
+
     n_pCanHandle->Instance = CAN2;
   }
 #endif
 
-#ifdef CAN3 
+#ifdef CAN3
   else if (_canPort == CAN3)
   {
     //CAN3
@@ -187,7 +225,7 @@ void STM32_CAN::begin( bool retransmission ) {
       GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    } 
+    }
     if (_pins == DEF)
     {
       __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -204,7 +242,7 @@ void STM32_CAN::begin( bool retransmission ) {
     // NVIC configuration for CAN3 Transmission complete interrupt
     HAL_NVIC_SetPriority(CAN3_TX_IRQn, 15, 0); // 15 is lowest possible priority
     HAL_NVIC_EnableIRQ(CAN3_TX_IRQn);
-    
+
     n_pCanHandle->Instance = CAN3;
   }
 #endif
@@ -227,15 +265,15 @@ void STM32_CAN::setBaudRate(uint32_t baud)
 
   // Initializes CAN
   HAL_CAN_Init( n_pCanHandle );
-  
+
   initializeFilters();
 
   // Start the CAN peripheral
   HAL_CAN_Start( n_pCanHandle );
-  
+
   // Activate CAN RX notification
   HAL_CAN_ActivateNotification( n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
- 
+
   // Activate CAN TX notification
   HAL_CAN_ActivateNotification( n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
 }
@@ -245,8 +283,8 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
   bool ret = true;
   uint32_t TxMailbox;
   CAN_TxHeaderTypeDef TxHeader;
- 
-  __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
+
+  bool state = Disable_Interrupts();
 
   if (CAN_tx_msg.flags.extended == 1) // Extended ID when CAN_tx_msg.flags.extended is 1
   {
@@ -258,7 +296,7 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
       TxHeader.StdId = CAN_tx_msg.id;
       TxHeader.IDE   = CAN_ID_STD;
   }
-  
+
   TxHeader.RTR   = CAN_RTR_DATA;
   TxHeader.DLC   = CAN_tx_msg.len;
   TxHeader.TransmitGlobalTime = DISABLE;
@@ -267,7 +305,7 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
   {
     /* in normal situation we add up the message to TX ring buffer, if there is no free TX mailbox. But the TX mailbox interrupt is using this same function
     to move the messages from ring buffer to empty TX mailboxes, so for that use case, there is this check */
-    if(sendMB != true) 
+    if(sendMB != true)
     {
       if( addToRingBuffer(txRing, CAN_tx_msg) == false )
       {
@@ -276,16 +314,16 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
     }
     else { ret = false; }
   }
-  __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
+  Enable_Interrupts(state);
   return ret;
 }
 
 bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
 {
   bool ret;
-  __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING); 
+  bool state = Disable_Interrupts();
   ret = removeFromRingBuffer(rxRing, CAN_rx_msg);
-  __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING); 
+  Enable_Interrupts(state);
   return ret;
 }
 
@@ -333,9 +371,9 @@ void STM32_CAN::setMBFilter(CAN_BANK bank_num, CAN_FLTEN input)
 {
   CAN_FilterTypeDef sFilterConfig;
   sFilterConfig.FilterBank = uint8_t(bank_num);
-  if (input = ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
+  if (input == ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
   else { sFilterConfig.FilterActivation = DISABLE; }
-  
+
   HAL_CAN_ConfigFilter(n_pCanHandle, &sFilterConfig);
 }
 
@@ -351,7 +389,7 @@ void STM32_CAN::setMBFilter(CAN_FLTEN input)
   for (uint8_t bank_num = min_bank_num ; bank_num <= max_bank_num ; bank_num++)
   {
     sFilterConfig.FilterBank = bank_num;
-    if (input = ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
+    if (input == ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
     else { sFilterConfig.FilterActivation = DISABLE; }
     HAL_CAN_ConfigFilter(n_pCanHandle, &sFilterConfig);
   }
@@ -398,16 +436,16 @@ void STM32_CAN::initializeFilters()
   if (_canPort == CAN2)
   {
     sFilterConfig.FilterBank = 14;
-  } 
+  }
   #endif
-  
+
   HAL_CAN_ConfigFilter(n_pCanHandle, &sFilterConfig);
 }
 
 void STM32_CAN::initializeBuffers()
 {
     if(isInitialized()) { return; }
-  
+
     // set up the transmit and receive ring buffers
     if(tx_buffer==0)
     {
@@ -487,6 +525,128 @@ uint32_t STM32_CAN::ringBufferCount(RingbufferTypeDef &ring)
     return((uint32_t)entries);
 }
 
+void STM32_CAN::setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescaler, uint8_t timeseg1,
+                                                                uint8_t timeseg2, uint8_t sjw)
+{
+  uint32_t _SyncJumpWidth = 0;
+  uint32_t _TimeSeg1 = 0;
+  uint32_t _TimeSeg2 = 0;
+  uint32_t _Prescaler = 0;
+  switch (sjw)
+  {
+    case 1:
+      _SyncJumpWidth = CAN_SJW_1TQ;
+      break;
+    case 2:
+      _SyncJumpWidth = CAN_SJW_2TQ;
+      break;
+    case 3:
+      _SyncJumpWidth = CAN_SJW_3TQ;
+      break;
+    case 4:
+      _SyncJumpWidth = CAN_SJW_4TQ;
+      break;
+    default:
+      // should not happen
+      _SyncJumpWidth = CAN_SJW_1TQ;
+      break;
+  }
+
+  switch (timeseg1)
+  {
+    case 1:
+      _TimeSeg1 = CAN_BS1_1TQ;
+      break;
+    case 2:
+      _TimeSeg1 = CAN_BS1_2TQ;
+      break;
+    case 3:
+      _TimeSeg1 = CAN_BS1_3TQ;
+      break;
+    case 4:
+      _TimeSeg1 = CAN_BS1_4TQ;
+      break;
+    case 5:
+      _TimeSeg1 = CAN_BS1_5TQ;
+      break;
+    case 6:
+      _TimeSeg1 = CAN_BS1_6TQ;
+      break;
+    case 7:
+      _TimeSeg1 = CAN_BS1_7TQ;
+      break;
+    case 8:
+      _TimeSeg1 = CAN_BS1_8TQ;
+      break;
+    case 9:
+      _TimeSeg1 = CAN_BS1_9TQ;
+      break;
+    case 10:
+      _TimeSeg1 = CAN_BS1_10TQ;
+      break;
+    case 11:
+      _TimeSeg1 = CAN_BS1_11TQ;
+      break;
+    case 12:
+      _TimeSeg1 = CAN_BS1_12TQ;
+      break;
+    case 13:
+      _TimeSeg1 = CAN_BS1_13TQ;
+      break;
+    case 14:
+      _TimeSeg1 = CAN_BS1_14TQ;
+      break;
+    case 15:
+      _TimeSeg1 = CAN_BS1_15TQ;
+      break;
+    case 16:
+      _TimeSeg1 = CAN_BS1_16TQ;
+      break;
+    default:
+      // should not happen
+      _TimeSeg1 = CAN_BS1_1TQ;
+      break;
+  }
+
+  switch (timeseg2)
+  {
+    case 1:
+      _TimeSeg2 = CAN_BS2_1TQ;
+      break;
+    case 2:
+      _TimeSeg2 = CAN_BS2_2TQ;
+      break;
+    case 3:
+      _TimeSeg2 = CAN_BS2_3TQ;
+      break;
+    case 4:
+      _TimeSeg2 = CAN_BS2_4TQ;
+      break;
+    case 5:
+      _TimeSeg2 = CAN_BS2_5TQ;
+      break;
+    case 6:
+      _TimeSeg2 = CAN_BS2_6TQ;
+      break;
+    case 7:
+      _TimeSeg2 = CAN_BS2_7TQ;
+      break;
+    case 8:
+      _TimeSeg2 = CAN_BS2_8TQ;
+      break;
+    default:
+      // should not happen
+      _TimeSeg2 = CAN_BS2_1TQ;
+      break;
+  }
+  _Prescaler = prescaler;
+
+  CanHandle->Init.SyncJumpWidth = _SyncJumpWidth;
+  CanHandle->Init.TimeSeg1 = _TimeSeg1;
+  CanHandle->Init.TimeSeg2 = _TimeSeg2;
+  CanHandle->Init.Prescaler = _Prescaler;
+}
+
 void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
 {
   /* this function calculates the needed Sync Jump Width, Time segments 1 and 2 and prescaler values based on the set baud rate and APB1 clock.
@@ -498,164 +658,48 @@ void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
   int bs1 = 5; // optimization. bs1 smaller than 5 does give too small sample-point percentages.
   int bs2 = 1;
   int prescaler = 1;
-  uint32_t _SyncJumpWidth;
-  uint32_t _TimeSeg1;
-  uint32_t _TimeSeg2;
-  uint32_t _Prescaler;
-  
-  bool shouldBrake = false;
-  
+  uint16_t i = 0;
+
   uint32_t frequency = getAPB1Clock();
-  
-  for (; sjw <= 4 && !shouldBrake;)
-  {
-    for (; prescaler <= 1024 && !shouldBrake;)
-    {
-      for (; bs2 <= 3 && !shouldBrake;)  // Time segment 2 can get up to 8, but that causes too small sample-point percentages, so this is limited to 3.
-      {
-        for (; bs1 <= 15 && !shouldBrake;)  // Time segment 1 can get up to 16, but that causes too big sample-point percenages, so this is limited to 15.
-        {
-          int calcBaudrate = (int)(frequency / (prescaler * (sjw + bs1 + bs2)));
-          
-          if (calcBaudrate == baud)
-          {
-            switch (sjw)
-            {
-              case 1:
-                _SyncJumpWidth = CAN_SJW_1TQ;
-                break;
-              case 2:
-                _SyncJumpWidth = CAN_SJW_2TQ;
-                break;
-              case 3:
-                _SyncJumpWidth = CAN_SJW_3TQ;
-                break;
-              case 4:
-                _SyncJumpWidth = CAN_SJW_4TQ;
-                break;
-              default:
-                // should not happen
-                _SyncJumpWidth = CAN_SJW_1TQ;
-                break;
-            }
 
-            switch (bs1)
-            {
-              case 1:
-                _TimeSeg1 = CAN_BS1_1TQ;
-                break;
-              case 2:
-                _TimeSeg1 = CAN_BS1_2TQ;
-                break;
-              case 3:
-                _TimeSeg1 = CAN_BS1_3TQ;
-                break;
-              case 4:
-                _TimeSeg1 = CAN_BS1_4TQ;
-                break;
-              case 5:
-                _TimeSeg1 = CAN_BS1_5TQ;
-                break;
-              case 6:
-                _TimeSeg1 = CAN_BS1_6TQ;
-                break;
-              case 7:
-                _TimeSeg1 = CAN_BS1_7TQ;
-                break;
-              case 8:
-                _TimeSeg1 = CAN_BS1_8TQ;
-                break;
-              case 9:
-                _TimeSeg1 = CAN_BS1_9TQ;
-                break;
-              case 10:
-                _TimeSeg1 = CAN_BS1_10TQ;
-                break;
-              case 11:
-                _TimeSeg1 = CAN_BS1_11TQ;
-                break;
-              case 12:
-                _TimeSeg1 = CAN_BS1_12TQ;
-                break;
-              case 13:
-                _TimeSeg1 = CAN_BS1_13TQ;
-                break;
-              case 14:
-                _TimeSeg1 = CAN_BS1_14TQ;
-                break;
-              case 15:
-                _TimeSeg1 = CAN_BS1_15TQ;
-                break;
-              case 16:
-                _TimeSeg1 = CAN_BS1_16TQ;
-                break;
-              default:
-                // should not happen
-                _TimeSeg1 = CAN_BS1_1TQ;
-                break;
-            }
-
-            switch (bs2)
-            {
-              case 1:
-                _TimeSeg2 = CAN_BS2_1TQ;
-                break;
-              case 2:
-                _TimeSeg2 = CAN_BS2_2TQ;
-                break;
-              case 3:
-                _TimeSeg2 = CAN_BS2_3TQ;
-                break;
-              case 4:
-                _TimeSeg2 = CAN_BS2_4TQ;
-                break;
-              case 5:
-                _TimeSeg2 = CAN_BS2_5TQ;
-                break;
-              case 6:
-                _TimeSeg2 = CAN_BS2_6TQ;
-                break;
-              case 7:
-                _TimeSeg2 = CAN_BS2_7TQ;
-                break;
-              case 8:
-                _TimeSeg2 = CAN_BS2_8TQ;
-                break;
-              default:
-                // should not happen
-                _TimeSeg2 = CAN_BS2_1TQ;
-                break;
-            }
-            _Prescaler = prescaler;
-
-            shouldBrake = true;
-          }
-          bs1++;
-        }
-        if (!shouldBrake)
-        {
-          bs1 = 5;
-          bs2++;
-        }
-      }
-      if (!shouldBrake)
-      {
-        bs1 = 5;
-        bs2 = 1;
-        prescaler++;
+  if(frequency == 48000000) {
+    for(i=0; i<sizeof(BAUD_RATE_TABLE_48M)/sizeof(Baudrate_entry_t); i++) {
+      if(baud == (int)BAUD_RATE_TABLE_48M[i].baudrate) {
+        break;
       }
     }
-    if (!shouldBrake)
-    {
-      bs1 = 5;
-      sjw++;
+    if(i < sizeof(BAUD_RATE_TABLE_48M)/sizeof(Baudrate_entry_t)) {
+      setBaudRateValues(CanHandle, BAUD_RATE_TABLE_48M[i].prescaler,
+                                   BAUD_RATE_TABLE_48M[i].timeseg1,
+                                   BAUD_RATE_TABLE_48M[i].timeseg2,
+                                   1);
+      return;
     }
   }
 
-  CanHandle->Init.SyncJumpWidth = _SyncJumpWidth;
-  CanHandle->Init.TimeSeg1 = _TimeSeg1;
-  CanHandle->Init.TimeSeg2 = _TimeSeg2;
-  CanHandle->Init.Prescaler = _Prescaler;
+  while (sjw <= 4) {
+    while (prescaler <= 1024) {
+      while (bs2 <= 3) { // Time segment 2 can get up to 8, but that causes too small sample-point percentages, so this is limited to 3.
+        while (bs1 <= 15) { // Time segment 1 can get up to 16, but that causes too big sample-point percenages, so this is limited to 15.
+          int calcBaudrate = (int)(frequency / (prescaler * (sjw + bs1 + bs2)));
+
+          if (calcBaudrate == baud)
+          {
+            setBaudRateValues(CanHandle, prescaler, bs1, bs2, sjw);
+            return;
+          }
+          bs1++;
+        }
+        bs1 = 5;
+        bs2++;
+      }
+      bs1 = 5;
+      bs2 = 1;
+      prescaler++;
+    }
+    bs1 = 5;
+    sjw++;
+  }
 }
 
 uint32_t STM32_CAN::getAPB1Clock()
@@ -695,18 +739,18 @@ uint32_t STM32_CAN::getAPB1Clock()
 
 void STM32_CAN::enableMBInterrupts()
 {
-  if (n_pCanHandle->Instance == CAN1) 
+  if (n_pCanHandle->Instance == CAN1)
   {
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
   }
 #ifdef CAN2
-  else if (n_pCanHandle->Instance == CAN2) 
+  else if (n_pCanHandle->Instance == CAN2)
   {
     HAL_NVIC_EnableIRQ(CAN2_TX_IRQn);
   }
 #endif
 #ifdef CAN3
-  else if (n_pCanHandle->Instance == CAN3) 
+  else if (n_pCanHandle->Instance == CAN3)
   {
     HAL_NVIC_EnableIRQ(CAN3_TX_IRQn);
   }
@@ -715,7 +759,7 @@ void STM32_CAN::enableMBInterrupts()
 
 void STM32_CAN::disableMBInterrupts()
 {
-  if (n_pCanHandle->Instance == CAN1) 
+  if (n_pCanHandle->Instance == CAN1)
   {
     HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
   }
@@ -753,102 +797,57 @@ void STM32_CAN::enableFIFO(bool status)
   //Nothing to do here. The FIFO is on by default. This is just to work with code made for Teensy FlexCan.
 }
 
-/* Interrupt functions 
+/* Interrupt functions
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------
 */
+extern "C" void TxMailboxCompleteCallback( CAN_HandleTypeDef *CanHandle )
+{
+  bool state = Disable_Interrupts();
+  CAN_message_t txmsg;
+
+  // use correct CAN instance
+  if (CanHandle->Instance == CAN1)
+  {
+    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
+    {
+      _CAN1->write(txmsg, true);
+    }
+  }
+#ifdef CAN2
+  else if (CanHandle->Instance == CAN2)
+  {
+    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
+    {
+      _CAN2->write(txmsg, true);
+    }
+  }
+#endif
+#ifdef CAN3
+  else if (CanHandle->Instance == CAN3)
+  {
+    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
+    {
+      _CAN3->write(txmsg, true);
+    }
+  }
+#endif
+  Enable_Interrupts(state);
+}
 
 // There is 3 TX mailboxes. Each one has own transmit complete callback function, that we use to pull next message from TX ringbuffer to be sent out in TX mailbox.
 extern "C" void HAL_CAN_TxMailbox0CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
-  CAN_message_t txmsg;
-  // use correct CAN instance
-  if (CanHandle->Instance == CAN1) 
-  {
-    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
-    {
-      _CAN1->write(txmsg, true);
-    }
-  }
-#ifdef CAN2
-  else if (CanHandle->Instance == CAN2) 
-  {
-    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
-    {
-      _CAN2->write(txmsg, true);
-    }
-  }
-#endif
-#ifdef CAN3
-  else if (CanHandle->Instance == CAN3) 
-  {
-    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
-    {
-      _CAN3->write(txmsg, true);
-    }
-  }
-#endif
+  TxMailboxCompleteCallback(CanHandle);
 }
 
 extern "C" void HAL_CAN_TxMailbox1CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
-  CAN_message_t txmsg;
-  // use correct CAN instance
-  if (CanHandle->Instance == CAN1) 
-  {
-    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
-    {
-      _CAN1->write(txmsg, true);
-    }
-  }
-#ifdef CAN2
-  else if (CanHandle->Instance == CAN2) 
-  {
-    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
-    {
-      _CAN2->write(txmsg, true);
-    }
-  }
-#endif
-#ifdef CAN3
-  else if (CanHandle->Instance == CAN3) 
-  {
-    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
-    {
-      _CAN3->write(txmsg, true);
-    }
-  }
-#endif
+  TxMailboxCompleteCallback(CanHandle);
 }
 
 extern "C" void HAL_CAN_TxMailbox2CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
-  CAN_message_t txmsg;
-  // use correct CAN instance
-  if (CanHandle->Instance == CAN1) 
-  {
-    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
-    {
-      _CAN1->write(txmsg, true);
-    }
-  }
-#ifdef CAN2
-  else if (CanHandle->Instance == CAN2) 
-  {
-    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
-    {
-      _CAN2->write(txmsg, true);
-    }
-  }
-#endif
-#ifdef CAN3
-  else if (CanHandle->Instance == CAN3) 
-  {
-    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
-    {
-      _CAN3->write(txmsg, true);
-    }
-  }
-#endif
+  TxMailboxCompleteCallback(CanHandle);
 }
 
 // This is called by RX0_IRQHandler when there is message at RX FIFO0 buffer
@@ -856,7 +855,8 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
 {
   CAN_message_t rxmsg;
   CAN_RxHeaderTypeDef   RxHeader;
-  
+  bool state = Disable_Interrupts();
+
   // move the message from RX FIFO0 to RX ringbuffer
   if (HAL_CAN_GetRxMessage( CanHandle, CAN_RX_FIFO0, &RxHeader, rxmsg.buf ) == HAL_OK)
   {
@@ -877,26 +877,27 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
     rxmsg.len          = RxHeader.DLC;
 
     // use correct ring buffer based on CAN instance
-    if (CanHandle->Instance == CAN1) 
+    if (CanHandle->Instance == CAN1)
     {
       rxmsg.bus = 1;
       _CAN1->addToRingBuffer(_CAN1->rxRing, rxmsg);
     }
 #ifdef CAN2
-    else if (CanHandle->Instance == CAN2) 
+    else if (CanHandle->Instance == CAN2)
     {
       rxmsg.bus = 2;
       _CAN2->addToRingBuffer(_CAN2->rxRing, rxmsg);
     }
 #endif
 #ifdef CAN3
-    else if (CanHandle->Instance == CAN3) 
+    else if (CanHandle->Instance == CAN3)
     {
       rxmsg.bus = 3;
       _CAN3->addToRingBuffer(_CAN3->rxRing, rxmsg);
     }
 #endif
   }
+  Enable_Interrupts(state);
 }
 
 // RX IRQ handlers
@@ -936,4 +937,3 @@ extern "C" void CAN3_TX_IRQHandler(void)
   HAL_CAN_IRQHandler(&hcan3);
 }
 #endif
-
