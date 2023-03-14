@@ -18,8 +18,5 @@ jobs:
             - name: "STM32:stm32"
               source-url: https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/master/STM32/package_stm_index.json
           fqbn: "STM32:stm32:Nucleo_144"
-          fqbn: "STM32:stm32:GENERIC_F103C8TX"
-          fqbn: "STM32:stm32:GENERIC_F412RETX"
-          fqbn: "STM32:stm32:GENERIC_F407VETX"
           libraries: |
             - source-path: ./ 
