@@ -99,7 +99,11 @@ void STM32_CAN::begin( bool retransmission ) {
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
       GPIO_InitStruct.Pin = GPIO_PIN_9;
       #else  // Without AFIO, this is the way to set the pins for CAN.
+      #if defined(GPIO_AF8_CAN1)  // Another weird thing. Depending on the MCU used, this can be AF8 or AF9
       GPIO_InitStruct.Alternate = GPIO_AF8_CAN1;
+      #else
+      GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
+      #endif
       GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
       GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
       #endif
