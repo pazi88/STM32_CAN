@@ -195,6 +195,25 @@ class STM32_CAN {
         100000, 30, 16, 13, 2
       }
     };
+	
+    static constexpr Baudrate_entry_t BAUD_RATE_TABLE_45M[] {
+      {
+        1000000, 3, 15, 12, 2
+      },
+      {
+        500000, 5, 18, 15, 2
+      },
+      {
+        250000, 10, 18, 15, 2
+      },
+      {
+        125000, 20, 18, 15, 2
+      },
+      {
+        100000, 25, 18, 15, 2
+      }
+    };
+
     bool     _canIsActive = false;
     CAN_PINS _pins;
 

@@ -1,6 +1,7 @@
 #include "STM32_CAN.h"
 
 constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_48M[];
+constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_45M[];
 
 static STM32_CAN* _CAN1 = nullptr;
 static CAN_HandleTypeDef     hcan1;
@@ -676,6 +677,20 @@ void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
       setBaudRateValues(CanHandle, BAUD_RATE_TABLE_48M[i].prescaler,
                                    BAUD_RATE_TABLE_48M[i].timeseg1,
                                    BAUD_RATE_TABLE_48M[i].timeseg2,
+                                   1);
+      return;
+    }
+  }
+  else if(frequency == 45000000) {
+    for(i=0; i<sizeof(BAUD_RATE_TABLE_45M)/sizeof(Baudrate_entry_t); i++) {
+      if(baud == (int)BAUD_RATE_TABLE_45M[i].baudrate) {
+        break;
+      }
+    }
+    if(i < sizeof(BAUD_RATE_TABLE_45M)/sizeof(Baudrate_entry_t)) {
+      setBaudRateValues(CanHandle, BAUD_RATE_TABLE_45M[i].prescaler,
+                                   BAUD_RATE_TABLE_45M[i].timeseg1,
+                                   BAUD_RATE_TABLE_45M[i].timeseg2,
                                    1);
       return;
     }
