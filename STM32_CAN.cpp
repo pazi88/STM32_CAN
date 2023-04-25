@@ -15,30 +15,6 @@ static STM32_CAN* _CAN3 = nullptr;
 static CAN_HandleTypeDef     hcan3;
 #endif
 
-extern "C" bool Disable_Interrupts(void)
-{
-  /* Important function 1 */
-  uint32_t prim;
-
-  /* Do some stuff here which can be interrupted */
-
-  /* Read PRIMASK register, check interrupt status before you disable them */
-  /* Returns 0 if they are enabled, or non-zero if disabled */
-  prim = __get_PRIMASK();
-
-  /* Disable interrupts */
-  noInterrupts();
-
-  return prim == 0;
-}
-
-extern "C" void Enable_Interrupts(bool interruptsEnabled)
-{
-  if(interruptsEnabled) {
-    interrupts();
-  }
-}
-
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize ) {
 
   if (_canIsActive) { return; }
@@ -289,7 +265,7 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
   uint32_t TxMailbox;
   CAN_TxHeaderTypeDef TxHeader;
 
-  bool state = Disable_Interrupts();
+  __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
 
   if (CAN_tx_msg.flags.extended == 1) // Extended ID when CAN_tx_msg.flags.extended is 1
   {
@@ -319,16 +295,16 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
     }
     else { ret = false; }
   }
-  Enable_Interrupts(state);
+  __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
   return ret;
 }
 
 bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
 {
   bool ret;
-  bool state = Disable_Interrupts();
+  __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
   ret = removeFromRingBuffer(rxRing, CAN_rx_msg);
-  Enable_Interrupts(state);
+  __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
   return ret;
 }
 
@@ -819,13 +795,12 @@ void STM32_CAN::enableFIFO(bool status)
 /* Interrupt functions
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------
 */
-extern "C" void TxMailboxCompleteCallback( CAN_HandleTypeDef *CanHandle )
+// There is 3 TX mailboxes. Each one has own transmit complete callback function, that we use to pull next message from TX ringbuffer to be sent out in TX mailbox.
+extern "C" void HAL_CAN_TxMailbox0CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
-  bool state = Disable_Interrupts();
   CAN_message_t txmsg;
-
   // use correct CAN instance
-  if (CanHandle->Instance == CAN1)
+  if (CanHandle->Instance == CAN1) 
   {
     if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
     {
@@ -833,7 +808,7 @@ extern "C" void TxMailboxCompleteCallback( CAN_HandleTypeDef *CanHandle )
     }
   }
 #ifdef CAN2
-  else if (CanHandle->Instance == CAN2)
+  else if (CanHandle->Instance == CAN2) 
   {
     if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
     {
@@ -842,7 +817,7 @@ extern "C" void TxMailboxCompleteCallback( CAN_HandleTypeDef *CanHandle )
   }
 #endif
 #ifdef CAN3
-  else if (CanHandle->Instance == CAN3)
+  else if (CanHandle->Instance == CAN3) 
   {
     if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
     {
@@ -850,23 +825,68 @@ extern "C" void TxMailboxCompleteCallback( CAN_HandleTypeDef *CanHandle )
     }
   }
 #endif
-  Enable_Interrupts(state);
-}
-
-// There is 3 TX mailboxes. Each one has own transmit complete callback function, that we use to pull next message from TX ringbuffer to be sent out in TX mailbox.
-extern "C" void HAL_CAN_TxMailbox0CompleteCallback( CAN_HandleTypeDef *CanHandle )
-{
-  TxMailboxCompleteCallback(CanHandle);
 }
 
 extern "C" void HAL_CAN_TxMailbox1CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
-  TxMailboxCompleteCallback(CanHandle);
+  CAN_message_t txmsg;
+  // use correct CAN instance
+  if (CanHandle->Instance == CAN1) 
+  {
+    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
+    {
+      _CAN1->write(txmsg, true);
+    }
+  }
+#ifdef CAN2
+  else if (CanHandle->Instance == CAN2) 
+  {
+    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
+    {
+      _CAN2->write(txmsg, true);
+    }
+  }
+#endif
+#ifdef CAN3
+  else if (CanHandle->Instance == CAN3) 
+  {
+    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
+    {
+      _CAN3->write(txmsg, true);
+    }
+  }
+#endif
 }
 
 extern "C" void HAL_CAN_TxMailbox2CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
-  TxMailboxCompleteCallback(CanHandle);
+  CAN_message_t txmsg;
+  // use correct CAN instance
+  if (CanHandle->Instance == CAN1) 
+  {
+    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
+    {
+      _CAN1->write(txmsg, true);
+    }
+  }
+#ifdef CAN2
+  else if (CanHandle->Instance == CAN2) 
+  {
+    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
+    {
+      _CAN2->write(txmsg, true);
+    }
+  }
+#endif
+#ifdef CAN3
+  else if (CanHandle->Instance == CAN3) 
+  {
+    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
+    {
+      _CAN3->write(txmsg, true);
+    }
+  }
+#endif
 }
 
 // This is called by RX0_IRQHandler when there is message at RX FIFO0 buffer
@@ -874,7 +894,7 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
 {
   CAN_message_t rxmsg;
   CAN_RxHeaderTypeDef   RxHeader;
-  bool state = Disable_Interrupts();
+  //bool state = Disable_Interrupts();
 
   // move the message from RX FIFO0 to RX ringbuffer
   if (HAL_CAN_GetRxMessage( CanHandle, CAN_RX_FIFO0, &RxHeader, rxmsg.buf ) == HAL_OK)
@@ -916,7 +936,7 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
     }
 #endif
   }
-  Enable_Interrupts(state);
+  //Enable_Interrupts(state);
 }
 
 // RX IRQ handlers
