@@ -53,7 +53,6 @@ void loop() {
     Can.write(CAN_TX_msg);
 
     CAN_TX_msg.id = (0xA63);
-    CAN_TX_msg.flags.extended = 0;  // Back to standard ID.
     CAN_TX_msg.len = 8;
     CAN_TX_msg.buf[0] =  0x63;
     CAN_TX_msg.buf[1] =  0x49;
@@ -67,6 +66,7 @@ void loop() {
     Can.write(CAN_TX_msg);
 
     CAN_TX_msg.id = (0x23);
+    CAN_TX_msg.flags.extended = 0;  // Back to standard ID.
     CAN_TX_msg.len = 8;
     CAN_TX_msg.buf[0] =  0x03;
     CAN_TX_msg.buf[1] =  0x41;
