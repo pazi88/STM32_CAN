@@ -30,7 +30,7 @@ python3 stm32_can_to_csv.py -p PORT
 ```
 
 The PORT being one of COMx | /dev/ttySx | /dev/ttyACMx, depending on your
-platfrom and setup.
+platform and setup.
 
 To see all possible command line options:
 

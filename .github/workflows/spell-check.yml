@@ -15,3 +15,5 @@ jobs:
       # See: https://github.com/codespell-project/actions-codespell/blob/master/README.md
       - name: Spell check
         uses: codespell-project/actions-codespell@master
+        with:
+          ignore_words_list: ser
