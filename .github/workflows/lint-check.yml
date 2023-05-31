@@ -14,5 +14,5 @@ jobs:
       - name: Lint check
         uses: arduino/arduino-lint-action@v1
         with:
-          library-manager: submit
+          library-manager: update
           compliance: strict
