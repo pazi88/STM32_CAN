@@ -1,12 +1,22 @@
-name: Compile Examples
+name: Compile Examples for STM32
 
 on:
   - push
   - pull_request
 
 jobs:
-  compile-examples-stm32:
+  compile:
     runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+    
+      matrix:
+        board:
+          - fqbn: "Nucleo_144"
+          - fqbn: "GenF1:pnum=GENERIC_F103C8TX"
+          - fqbn: "GenF4:pnum=GENERIC_F412RETX"
+          - fqbn: "GenF4:pnum=GENERIC_F407VETX"
     
     steps:
       - name: Checkout repository
@@ -15,8 +25,8 @@ jobs:
         uses: arduino/compile-sketches@main
         with:
           platforms: |
-            - name: "STM32:stm32"
-              source-url: https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/master/STM32/package_stm_index.json
-          fqbn: "STM32:stm32:Nucleo_144"
+            - name: "STMicroelectronics:stm32"
+              source-url: https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+          fqbn: STMicroelectronics:stm32:${{ matrix.board.fqbn }}
           libraries: |
             - source-path: ./ 
