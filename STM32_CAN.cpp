@@ -76,19 +76,25 @@ void STM32_CAN::begin( bool retransmission ) {
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
       GPIO_InitStruct.Pin = GPIO_PIN_9;
       #else  // Without AFIO, this is the way to set the pins for CAN.
-      #if defined(GPIO_AF8_CAN1)  // Another weird thing. Depending on the MCU used, this can be AF8 or AF9
+      #if defined(GPIO_AF8_CAN1)  // Depending on the MCU used, this can be AF8, AF4 or AF9
       GPIO_InitStruct.Alternate = GPIO_AF8_CAN1;
+      #elif defined(GPIO_AF4_CAN)
+      GPIO_InitStruct.Alternate = GPIO_AF4_CAN;
       #else
       GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
       #endif
       GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
+      #if defined(GPIO_SPEED_FREQ_VERY_HIGH)
       GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+      #else
+      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+      #endif
       #endif
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
     }
-     if (_pins == DEF)
-     {
+    if (_pins == DEF)
+    {
       __HAL_RCC_GPIOA_CLK_ENABLE();
       GPIO_InitStruct.Pull = GPIO_NOPULL;
       #if defined(__HAL_RCC_AFIO_CLK_ENABLE)
@@ -100,16 +106,25 @@ void STM32_CAN::begin( bool retransmission ) {
       HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
       GPIO_InitStruct.Pin = GPIO_PIN_12;
       #else
+      #if defined(GPIO_AF4_CAN)
+      GPIO_InitStruct.Alternate = GPIO_AF4_CAN;
+      #else
       GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
+      #endif
       GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
+      #if defined(GPIO_SPEED_FREQ_VERY_HIGH)
       GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+      #else
+      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+      #endif
       #endif
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
       HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     }
 
-     if (_pins == ALT_2)
-     {
+    #if defined(__HAL_RCC_GPIOD_CLK_ENABLE) // not all MCU variants have port GPIOD available
+    if (_pins == ALT_2)
+    {
       __HAL_RCC_GPIOD_CLK_ENABLE();
       GPIO_InitStruct.Pull = GPIO_NOPULL;
       #if defined(__HAL_RCC_AFIO_CLK_ENABLE)
@@ -128,13 +143,21 @@ void STM32_CAN::begin( bool retransmission ) {
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
       HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
     }
+    #endif
 
+
+    #if defined(STM32F0xx)
+    // NVIC configuration for CAN1
+    HAL_NVIC_SetPriority(CEC_CAN_IRQn, 15, 0);
+    HAL_NVIC_EnableIRQ(CEC_CAN_IRQn);
+    #else
     // NVIC configuration for CAN1 Reception complete interrupt
     HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 15, 0); // 15 is lowest possible priority
     HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn );
     // NVIC configuration for CAN1 Transmission complete interrupt
     HAL_NVIC_SetPriority(CAN1_TX_IRQn, 15, 0); // 15 is lowest possible priority
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+    #endif
 
     n_pCanHandle->Instance = CAN1;
   }
@@ -736,7 +759,11 @@ void STM32_CAN::enableMBInterrupts()
 {
   if (n_pCanHandle->Instance == CAN1)
   {
+    #if defined(STM32F0xx)
+    HAL_NVIC_EnableIRQ(CEC_CAN_IRQn);
+    #else
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+    #endif
   }
 #ifdef CAN2
   else if (n_pCanHandle->Instance == CAN2)
@@ -756,7 +783,11 @@ void STM32_CAN::disableMBInterrupts()
 {
   if (n_pCanHandle->Instance == CAN1)
   {
+    #if defined(STM32F0xx)
+    HAL_NVIC_EnableIRQ(CEC_CAN_IRQn);
+    #else
     HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
+    #endif
   }
 #ifdef CAN2
   else if (n_pCanHandle->Instance == CAN2)
