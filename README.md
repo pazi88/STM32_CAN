@@ -6,7 +6,7 @@ This library should support all STM32 MCUs that are also supported in stm32duino
 up to 3x CAN buses. This library is based on several STM32 CAN example libraries linked below and it has been 
 combined with few things from Teensy FlexCAN library to make it compatible with CAN coding projects made for Teensy.
 
-Note! This will currenly only work with CAN interface. Not with CANFD.
+Note! This will currently only work with CAN interface. Not with CANFD.
 
 
 Links to repositories that have helped with this:
