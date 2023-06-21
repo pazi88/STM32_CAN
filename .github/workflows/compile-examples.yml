@@ -14,7 +14,7 @@ jobs:
       matrix:
         board:
           - fqbn: "Nucleo_144"
-          - fqbn: "GenF1:pnum=GENERIC_F042F6PX"
+          - fqbn: "GenF0:pnum=GENERIC_F042F6PX"
           - fqbn: "GenF1:pnum=GENERIC_F103C8TX"
           - fqbn: "GenF4:pnum=GENERIC_F412RETX"
           - fqbn: "GenF4:pnum=GENERIC_F407VETX"
