@@ -301,7 +301,14 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
       TxHeader.IDE   = CAN_ID_STD;
   }
 
-  TxHeader.RTR   = CAN_RTR_DATA;
+  if (CAN_tx_msg.flags.remote == 1) // Remote frame when CAN_tx_msg.flags.remote is 1
+  {
+    TxHeader.RTR   = CAN_RTR_REMOTE;
+  }
+  else{
+    TxHeader.RTR   = CAN_RTR_DATA;
+  }
+
   TxHeader.DLC   = CAN_tx_msg.len;
   TxHeader.TransmitGlobalTime = DISABLE;
 
