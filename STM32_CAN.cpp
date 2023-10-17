@@ -304,12 +304,13 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
   if (CAN_tx_msg.flags.remote == 1) // Remote frame when CAN_tx_msg.flags.remote is 1
   {
     TxHeader.RTR   = CAN_RTR_REMOTE;
+    TxHeader.DLC   = 0;
   }
   else{
     TxHeader.RTR   = CAN_RTR_DATA;
+    TxHeader.DLC   = CAN_tx_msg.len;
   }
 
-  TxHeader.DLC   = CAN_tx_msg.len;
   TxHeader.TransmitGlobalTime = DISABLE;
 
   if(HAL_CAN_AddTxMessage( n_pCanHandle, &TxHeader, CAN_tx_msg.buf, &TxMailbox) != HAL_OK)
