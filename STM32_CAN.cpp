@@ -145,19 +145,12 @@ void STM32_CAN::begin( bool retransmission ) {
     }
     #endif
 
-
-    #if defined(STM32F0xx)
-    // NVIC configuration for CAN1
-    HAL_NVIC_SetPriority(CEC_CAN_IRQn, 15, 0);
-    HAL_NVIC_EnableIRQ(CEC_CAN_IRQn);
-    #else
     // NVIC configuration for CAN1 Reception complete interrupt
     HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 15, 0); // 15 is lowest possible priority
     HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn );
     // NVIC configuration for CAN1 Transmission complete interrupt
     HAL_NVIC_SetPriority(CAN1_TX_IRQn, 15, 0); // 15 is lowest possible priority
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
-    #endif
 
     n_pCanHandle->Instance = CAN1;
   }
@@ -767,11 +760,7 @@ void STM32_CAN::enableMBInterrupts()
 {
   if (n_pCanHandle->Instance == CAN1)
   {
-    #if defined(STM32F0xx)
-    HAL_NVIC_EnableIRQ(CEC_CAN_IRQn);
-    #else
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
-    #endif
   }
 #ifdef CAN2
   else if (n_pCanHandle->Instance == CAN2)
@@ -791,11 +780,7 @@ void STM32_CAN::disableMBInterrupts()
 {
   if (n_pCanHandle->Instance == CAN1)
   {
-    #if defined(STM32F0xx)
-    HAL_NVIC_EnableIRQ(CEC_CAN_IRQn);
-    #else
     HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
-    #endif
   }
 #ifdef CAN2
   else if (n_pCanHandle->Instance == CAN2)

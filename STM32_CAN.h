@@ -19,6 +19,21 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
 #ifndef STM32_CAN_H
 #define STM32_CAN_H
 
+// couple of workarounds
+#if defined(STM32F3xx)
+  #define GPIO_AF9_CAN1 GPIO_AF9_CAN
+  #define CAN1_RX0_IRQn CAN_RX0_IRQn
+  #define CAN1_TX_IRQn CAN_TX_IRQn
+  #define GPIO_SPEED_FREQ_VERY_HIGH GPIO_SPEED_FREQ_HIGH
+  #define CAN1_TX_IRQHandler CAN_TX_IRQHandler
+  #define CAN1_RX0_IRQHandler CAN_RX0_IRQHandler
+#endif
+
+#if defined(STM32F0xx)
+  #define CAN1_TX_IRQn CEC_CAN_IRQn
+  #define CAN1_RX0_IRQn CEC_CAN_IRQn
+#endif
+
 #include <Arduino.h>
 
 // This struct is directly copied from Teensy FlexCAN library to retain compatibility with it. Not all are in use with STM32.

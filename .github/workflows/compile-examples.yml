@@ -16,6 +16,7 @@ jobs:
           - fqbn: "Nucleo_144"
           - fqbn: "GenF0:pnum=GENERIC_F042F6PX"
           - fqbn: "GenF1:pnum=GENERIC_F103C8TX"
+          - fqbn: "GenF3:pnum=GENERIC_F303RETX"
           - fqbn: "GenF4:pnum=GENERIC_F412RETX"
           - fqbn: "GenF4:pnum=GENERIC_F407VETX"
     
