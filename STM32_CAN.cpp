@@ -136,9 +136,17 @@ void STM32_CAN::begin( bool retransmission ) {
       HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
       GPIO_InitStruct.Pin = GPIO_PIN_1;
       #else
+      #if defined(GPIO_AF4_CAN)
+      GPIO_InitStruct.Alternate = GPIO_AF4_CAN;
+      #else
       GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
+      #endif
       GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+      #if defined(GPIO_SPEED_FREQ_VERY_HIGH)
       GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+      #else
+      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+      #endif
       #endif
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
       HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
