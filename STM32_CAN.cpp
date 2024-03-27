@@ -340,7 +340,7 @@ bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
   return ret;
 }
 
-bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, uint32_t fifo)
+bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE std_ext, uint32_t filter_mode, uint32_t filter_scale, uint32_t fifo)
 {
   CAN_FilterTypeDef sFilterConfig;
 
@@ -350,7 +350,7 @@ bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, u
   sFilterConfig.FilterFIFOAssignment = fifo;
   sFilterConfig.FilterActivation = ENABLE;
 
-  if (filter_id <= 0x7FF)
+  if (std_ext == STD || (std_ext == AUTO && filter_id <= 0x7FF))
   {
     // Standard ID can be only 11 bits long
     sFilterConfig.FilterIdHigh = (uint16_t) (filter_id << 5);
@@ -408,22 +408,22 @@ void STM32_CAN::setMBFilter(CAN_FLTEN input)
   }
 }
 
-bool STM32_CAN::setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask)
+bool STM32_CAN::setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask, IDE std_ext)
 {
   // just convert the MB number enum to bank number.
-  return setFilter(uint8_t(bank_num), filter_id, mask);
+  return setFilter(uint8_t(bank_num), filter_id, mask, std_ext);
 }
 
-bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1)
+bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, IDE std_ext)
 {
   // by setting the mask to 0x1FFFFFFF we only filter the ID set as Filter ID.
-  return setFilter(uint8_t(bank_num), id1, 0x1FFFFFFF);
+  return setFilter(uint8_t(bank_num), id1, 0x1FFFFFFF, std_ext);
 }
 
-bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2)
+bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE std_ext)
 {
   // if we set the filter mode as IDLIST, the mask becomes filter ID too. So we can filter two totally independent IDs in same bank.
-  return setFilter(uint8_t(bank_num), id1, id2, CAN_FILTERMODE_IDLIST);
+  return setFilter(uint8_t(bank_num), id1, id2, AUTO, CAN_FILTERMODE_IDLIST, std_ext);
 }
 
 // TBD, do this using "setFilter" -function

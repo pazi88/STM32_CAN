@@ -131,6 +131,12 @@ typedef enum CAN_FLTEN {
   REJECT_ALL = 1
 } CAN_FLTEN;
 
+typedef enum IDE {
+  STD = 0,
+  EXT = 1,
+  AUTO = 2
+} IDE;
+
 class STM32_CAN {
 
   public:
@@ -142,13 +148,13 @@ class STM32_CAN {
     bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
     bool read(CAN_message_t &CAN_rx_msg);
     // Manually set STM32 filter bank parameters
-    bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_FIFO0);
+    bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_FIFO0);
     // Teensy FlexCAN style "set filter" -functions
-    bool setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask);
+    bool setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO);
     void setMBFilter(CAN_FLTEN input); /* enable/disable traffic for all MBs (for individual masking) */
     void setMBFilter(CAN_BANK bank_num, CAN_FLTEN input); /* set specific MB to accept/deny traffic */
-    bool setMBFilter(CAN_BANK bank_num, uint32_t id1); /* input 1 ID to be filtered */
-    bool setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2); /* input 2 ID's to be filtered */
+    bool setMBFilter(CAN_BANK bank_num, uint32_t id1, IDE = AUTO); /* input 1 ID to be filtered */
+    bool setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE = AUTO); /* input 2 ID's to be filtered */
 
     void enableLoopBack(bool yes = 1);
     void enableSilentMode(bool yes = 1);

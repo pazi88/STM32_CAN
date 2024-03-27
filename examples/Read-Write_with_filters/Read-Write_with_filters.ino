@@ -68,8 +68,9 @@ void setup(){
   Can.setBaudRate(500000);
   Can.setMBFilterProcessing( MB0, 0x153, 0x1FFFFFFF );
   Can.setMBFilterProcessing( MB1, 0x613, 0x1FFFFFFF );
-  Can.setMBFilterProcessing( MB2, 0x615, 0x1FFFFFFF );
-  Can.setMBFilterProcessing( MB3, 0x1F0, 0x1FFFFFFF );
+  // You can also set that is the ID Standard or Extended
+  Can.setMBFilterProcessing( MB2, 0x615, 0x1FFFFFFF, STD );
+  Can.setMBFilterProcessing( MB3, 0x1F0, 0x1FFFFFFF, EXT );
 
   // We set the data that is static for the three different message structs once here.
   CAN_outMsg_1.id = (0x1A5);
