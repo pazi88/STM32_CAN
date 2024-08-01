@@ -682,17 +682,11 @@ bool STM32_CAN::lookupBaudrate(CAN_HandleTypeDef *CanHandle, int baud, const T(&
 
 void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
 {
-  /* this function calculates the needed Sync Jump Width, Time segments 1 and 2 and prescaler values based on the set baud rate and APB1 clock.
-  This could be done faster if needed by calculating these values beforehand and just using fixed values from table.
-  The function has been optimized to give values that have sample-point between 75-94%. If some other sample-point percentage is needed, this needs to be adjusted.
-  More info about this topic here: http://www.bittiming.can-wiki.info/
-  */
-  int sjw = 1;
-  int bs1 = 5; // optimization. bs1 smaller than 5 does give too small sample-point percentages.
-  int bs2 = 1;
-  int prescaler = 1;
+  uint8_t bs1;
+  uint8_t bs2;
+  uint16_t prescaler;
 
-  uint32_t frequency = getAPB1Clock();
+  const uint32_t frequency = getAPB1Clock();
 
   if (frequency == 48000000) {
     if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_48M)) return;
@@ -700,29 +694,38 @@ void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
     if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_45M)) return;
   }
 
-  while (sjw <= 4) {
-    while (prescaler <= 1024) {
-      while (bs2 <= 3) { // Time segment 2 can get up to 8, but that causes too small sample-point percentages, so this is limited to 3.
-        while (bs1 <= 15) { // Time segment 1 can get up to 16, but that causes too big sample-point percenages, so this is limited to 15.
-          int calcBaudrate = (int)(frequency / (prescaler * (sjw + bs1 + bs2)));
+  /* this loop seeks a precise baudrate match, with the sample point positioned
+   * at between ~75-95%. the nominal bit time is produced from N time quanta,
+   * running at the prescaled clock rate (where N = 1 + bs1 + bs2). this algorithm
+   * prefers the lowest prescaler (most time quanter per bit).
+   *
+   * many configuration sets can be discarded due to an out-of-bounds sample point,
+   * or being unable to reach the desired baudrate.
+   *
+   * for the best chance at interoperability, we use the widest SJW possible.
+   *
+   * for more details + justification, see: https://github.com/pazi88/STM32_CAN/pull/41
+   */
+  for (prescaler = 1; prescaler <= 1024; prescaler += 1) {
+    const uint32_t can_freq = frequency / prescaler;
+    const uint32_t baud_min = can_freq / (1 + 5 + 16);
 
-          if (calcBaudrate == baud)
-          {
-            setBaudRateValues(CanHandle, prescaler, bs1, bs2, sjw);
-            return;
-          }
-          bs1++;
-        }
-        bs1 = 5;
-        bs2++;
+    /* skip all prescaler values that can't possibly achieve the desired baudrate */
+    if (baud_min > baud) continue;
+
+    for (bs2 = 1; bs2 <= 5; bs2 += 1) {
+      for (bs1 = (bs2 * 3) - 1; bs1 <= 16; bs1 += 1) {
+        const uint32_t baud_cur = can_freq / (1 + bs1 + bs2);
+
+        if (baud_cur != baud) continue;
+
+        setBaudRateValues(CanHandle, prescaler, bs1, bs2, 4);
+        return;
       }
-      bs1 = 5;
-      bs2 = 1;
-      prescaler++;
     }
-    bs1 = 5;
-    sjw++;
   }
+
+  /* uhoh, failed to calculate an acceptable baud rate... */
 }
 
 uint32_t STM32_CAN::getAPB1Clock()
