@@ -545,8 +545,16 @@ void STM32_CAN::setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescal
   uint32_t _TimeSeg1 = 0;
   uint32_t _TimeSeg2 = 0;
   uint32_t _Prescaler = 0;
+
+  /* the CAN specification (v2.0) states that SJW shall be programmable between
+   * 1 and min(4, timeseg1)... the bxCAN documentation doesn't mention this
+   */
+  if (sjw > 4) sjw = 4;
+  if (sjw > timeseg1) sjw = timeseg1;
+
   switch (sjw)
   {
+    case 0:
     case 1:
       _SyncJumpWidth = CAN_SJW_1TQ;
       break;
@@ -557,11 +565,8 @@ void STM32_CAN::setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescal
       _SyncJumpWidth = CAN_SJW_3TQ;
       break;
     case 4:
+    default: /* limit to 4 */
       _SyncJumpWidth = CAN_SJW_4TQ;
-      break;
-    default:
-      // should not happen
-      _SyncJumpWidth = CAN_SJW_1TQ;
       break;
   }
 
@@ -685,7 +690,7 @@ void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
       setBaudRateValues(CanHandle, BAUD_RATE_TABLE_48M[i].prescaler,
                                    BAUD_RATE_TABLE_48M[i].timeseg1,
                                    BAUD_RATE_TABLE_48M[i].timeseg2,
-                                   1);
+                                   4);
       return;
     }
   }
@@ -699,7 +704,7 @@ void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
       setBaudRateValues(CanHandle, BAUD_RATE_TABLE_45M[i].prescaler,
                                    BAUD_RATE_TABLE_45M[i].timeseg1,
                                    BAUD_RATE_TABLE_45M[i].timeseg2,
-                                   1);
+                                   4);
       return;
     }
   }
