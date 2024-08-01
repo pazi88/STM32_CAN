@@ -665,6 +665,21 @@ void STM32_CAN::setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescal
   CanHandle->Init.Prescaler = _Prescaler;
 }
 
+template <typename T, size_t N>
+bool STM32_CAN::lookupBaudrate(CAN_HandleTypeDef *CanHandle, int baud, const T(&table)[N]) {
+  for (size_t i = 0; i < N; i++) {
+    if (baud != (int)table[i].baudrate) {
+      continue;
+    }
+
+    /* for the best chance at interoperability, use the widest SJW possible */
+    setBaudRateValues(CanHandle, table[i].prescaler, table[i].timeseg1, table[i].timeseg2, 4);
+    return true;
+  }
+
+  return false;
+}
+
 void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
 {
   /* this function calculates the needed Sync Jump Width, Time segments 1 and 2 and prescaler values based on the set baud rate and APB1 clock.
@@ -676,37 +691,13 @@ void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
   int bs1 = 5; // optimization. bs1 smaller than 5 does give too small sample-point percentages.
   int bs2 = 1;
   int prescaler = 1;
-  uint16_t i = 0;
 
   uint32_t frequency = getAPB1Clock();
 
-  if(frequency == 48000000) {
-    for(i=0; i<sizeof(BAUD_RATE_TABLE_48M)/sizeof(Baudrate_entry_t); i++) {
-      if(baud == (int)BAUD_RATE_TABLE_48M[i].baudrate) {
-        break;
-      }
-    }
-    if(i < sizeof(BAUD_RATE_TABLE_48M)/sizeof(Baudrate_entry_t)) {
-      setBaudRateValues(CanHandle, BAUD_RATE_TABLE_48M[i].prescaler,
-                                   BAUD_RATE_TABLE_48M[i].timeseg1,
-                                   BAUD_RATE_TABLE_48M[i].timeseg2,
-                                   4);
-      return;
-    }
-  }
-  else if(frequency == 45000000) {
-    for(i=0; i<sizeof(BAUD_RATE_TABLE_45M)/sizeof(Baudrate_entry_t); i++) {
-      if(baud == (int)BAUD_RATE_TABLE_45M[i].baudrate) {
-        break;
-      }
-    }
-    if(i < sizeof(BAUD_RATE_TABLE_45M)/sizeof(Baudrate_entry_t)) {
-      setBaudRateValues(CanHandle, BAUD_RATE_TABLE_45M[i].prescaler,
-                                   BAUD_RATE_TABLE_45M[i].timeseg1,
-                                   BAUD_RATE_TABLE_45M[i].timeseg2,
-                                   4);
-      return;
-    }
+  if (frequency == 48000000) {
+    if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_48M)) return;
+  } else if (frequency == 45000000) {
+    if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_45M)) return;
   }
 
   while (sjw <= 4) {
