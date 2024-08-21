@@ -189,6 +189,9 @@ class STM32_CAN {
     void      initializeBuffers(void);
     bool      isRingBufferEmpty(RingbufferTypeDef &ring);
     uint32_t  ringBufferCount(RingbufferTypeDef &ring);
+
+    template <typename T, size_t N>
+    bool      lookupBaudrate(CAN_HandleTypeDef *CanHandle, int Baudrate, const T(&table)[N]);
     void      calculateBaudrate(CAN_HandleTypeDef *CanHandle, int Baudrate);
     void      setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescaler, uint8_t timeseg1,
                                                               uint8_t timeseg2, uint8_t sjw);
