@@ -32,6 +32,7 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
 #if defined(STM32F0xx)
   #define CAN1_TX_IRQn CEC_CAN_IRQn
   #define CAN1_RX0_IRQn CEC_CAN_IRQn
+  #define CAN1_RX0_IRQHandler CEC_CAN_IRQHandler
 #endif
 
 #include <Arduino.h>
@@ -193,8 +194,8 @@ class STM32_CAN {
                                                               uint8_t timeseg2, uint8_t sjw);
     uint32_t  getAPB1Clock(void);
 
-    volatile CAN_message_t *rx_buffer;
-    volatile CAN_message_t *tx_buffer;
+    volatile CAN_message_t *rx_buffer = nullptr;
+    volatile CAN_message_t *tx_buffer = nullptr;
 
     static constexpr Baudrate_entry_t BAUD_RATE_TABLE_48M[] {
       {
