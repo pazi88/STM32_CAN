@@ -193,8 +193,8 @@ class STM32_CAN {
                                                               uint8_t timeseg2, uint8_t sjw);
     uint32_t  getAPB1Clock(void);
 
-    volatile CAN_message_t *rx_buffer;
-    volatile CAN_message_t *tx_buffer;
+    volatile CAN_message_t *rx_buffer = nullptr;
+    volatile CAN_message_t *tx_buffer = nullptr;
 
     static constexpr Baudrate_entry_t BAUD_RATE_TABLE_48M[] {
       {
