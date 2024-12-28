@@ -142,6 +142,9 @@ class STM32_CAN {
 
   public:
     // Default buffer sizes are set to 16. But this can be changed by using constructor in main code.
+    STM32_CAN(PinName rx, PinName tx = NC, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+    STM32_CAN(CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+    //legacy for compatibility
     STM32_CAN(CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     // Begin. By default the automatic retransmission is enabled. If it causes problems, use begin(false) to disable it.
     void begin(bool retransmission = false);
@@ -183,6 +186,7 @@ class STM32_CAN {
     uint16_t sizeTxBuffer;
 
   private:
+    void      init(void);
     void      initializeFilters();
     bool      isInitialized() { return rx_buffer != 0; }
     void      initRingBuffer(RingbufferTypeDef &ring, volatile CAN_message_t *buffer, uint32_t size);
@@ -240,7 +244,9 @@ class STM32_CAN {
     };
 
     bool     _canIsActive = false;
-    CAN_PINS _pins;
+
+    PinName rx;
+    PinName tx;
 
     CAN_HandleTypeDef *n_pCanHandle;
     CAN_TypeDef*      _canPort;
