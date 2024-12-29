@@ -160,6 +160,14 @@ class STM32_CAN {
     bool setMBFilter(CAN_BANK bank_num, uint32_t id1, IDE = AUTO); /* input 1 ID to be filtered */
     bool setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE = AUTO); /* input 2 ID's to be filtered */
 
+    enum Mode {
+      NORMAL               = CAN_MODE_NORMAL,
+      LOOPBACK             = CAN_MODE_LOOPBACK,
+      SILENT               = CAN_MODE_SILENT,
+      SILENT_LOOPBACK      = CAN_MODE_SILENT_LOOPBACK
+    };
+
+    void setMode(Mode mode);
     void enableLoopBack(bool yes = 1);
     void enableSilentMode(bool yes = 1);
     void enableSilentLoopBack(bool yes = 1);
@@ -244,6 +252,8 @@ class STM32_CAN {
     };
 
     bool     _canIsActive = false;
+
+    Mode mode;
 
     PinName rx;
     PinName tx;

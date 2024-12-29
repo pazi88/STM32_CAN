@@ -16,13 +16,15 @@ static CAN_HandleTypeDef     hcan3;
 #endif
 
 STM32_CAN::STM32_CAN(PinName rx, PinName tx, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize)
-  : rx(rx), tx(tx), sizeRxBuffer(rxSize), sizeTxBuffer(txSize)
+  : rx(rx), tx(tx), sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
+    mode(Mode::NORMAL)
 {
   init();
 }
 
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize )
-  : sizeRxBuffer(rxSize), sizeTxBuffer(txSize)
+  : sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
+    mode(Mode::NORMAL)
 {
   //get first matching pins from map
   rx = pinmap_find_pin(canPort, PinMap_CAN_RD);
@@ -32,7 +34,8 @@ STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE 
 
 //lagacy pin config for compatibility
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize )
-  : rx(NC), tx(NC), sizeRxBuffer(rxSize), sizeTxBuffer(txSize)
+  : rx(NC), tx(NC), sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
+    mode(Mode::NORMAL)
 {
   if (canPort == CAN1)
   {
@@ -199,7 +202,7 @@ void STM32_CAN::begin( bool retransmission ) {
   else { n_pCanHandle->Init.AutoRetransmission  = DISABLE; }
   n_pCanHandle->Init.ReceiveFifoLocked  = DISABLE;
   n_pCanHandle->Init.TransmitFifoPriority = ENABLE;
-  n_pCanHandle->Init.Mode = CAN_MODE_NORMAL;
+  n_pCanHandle->Init.Mode = mode;
 }
 
 void STM32_CAN::setBaudRate(uint32_t baud)
@@ -743,19 +746,22 @@ void STM32_CAN::disableMBInterrupts()
 #endif
 }
 
+void STM32_CAN::setMode(Mode mode)
+{
+  this->mode = mode;
+  n_pCanHandle->Init.Mode = mode;
+}
+
 void STM32_CAN::enableLoopBack( bool yes ) {
-  if (yes) { n_pCanHandle->Init.Mode = CAN_MODE_LOOPBACK; }
-  else { n_pCanHandle->Init.Mode = CAN_MODE_NORMAL; }
+  setMode(yes ? Mode::LOOPBACK : Mode::NORMAL);
 }
 
 void STM32_CAN::enableSilentMode( bool yes ) {
-  if (yes) { n_pCanHandle->Init.Mode = CAN_MODE_SILENT; }
-  else { n_pCanHandle->Init.Mode = CAN_MODE_NORMAL; }
+  setMode(yes ? Mode::SILENT : Mode::NORMAL);
 }
 
 void STM32_CAN::enableSilentLoopBack( bool yes ) {
-  if (yes) { n_pCanHandle->Init.Mode = CAN_MODE_SILENT_LOOPBACK; }
-  else { n_pCanHandle->Init.Mode = CAN_MODE_NORMAL; }
+  setMode(yes ? Mode::SILENT_LOOPBACK : Mode::NORMAL);
 }
 
 void STM32_CAN::enableFIFO(bool status)
