@@ -1,5 +1,8 @@
 #include "STM32_CAN.h"
 
+//Max value, lowest priority
+#define MAX_IRQ_PRIO_VALUE ((1UL << __NVIC_PRIO_BITS) - 1UL)
+
 constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_48M[];
 constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_45M[];
 
@@ -17,14 +20,14 @@ static CAN_HandleTypeDef     hcan3;
 
 STM32_CAN::STM32_CAN(PinName rx, PinName tx, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize)
   : rx(rx), tx(tx), sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
-    mode(Mode::NORMAL)
+    mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
 {
   init();
 }
 
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize )
   : sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
-    mode(Mode::NORMAL)
+    mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
 {
   //get first matching pins from map
   rx = pinmap_find_pin(canPort, PinMap_CAN_RD);
@@ -35,7 +38,7 @@ STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE 
 //lagacy pin config for compatibility
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize )
   : rx(NC), tx(NC), sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
-    mode(Mode::NORMAL)
+    mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
 {
   if (canPort == CAN1)
   {
@@ -132,6 +135,13 @@ void STM32_CAN::init(void)
   _canPort = canPort_rx;
 }
 
+void STM32_CAN::setIRQPriority(uint32_t preemptPriority, uint32_t subPriority)
+{
+  //NOTE: limiting the IRQ prio, but not accounting for group setting
+  this->preemptPriority = min(preemptPriority, MAX_IRQ_PRIO_VALUE);
+  this->subPriority = min(subPriority, MAX_IRQ_PRIO_VALUE);
+}
+
 // Init and start CAN
 void STM32_CAN::begin( bool retransmission ) {
 
@@ -152,10 +162,10 @@ void STM32_CAN::begin( bool retransmission ) {
     __HAL_RCC_CAN1_CLK_ENABLE();
 
     // NVIC configuration for CAN1 Reception complete interrupt
-    HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 15, 0); // 15 is lowest possible priority
+    HAL_NVIC_SetPriority(CAN1_RX0_IRQn, preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn );
     // NVIC configuration for CAN1 Transmission complete interrupt
-    HAL_NVIC_SetPriority(CAN1_TX_IRQn, 15, 0); // 15 is lowest possible priority
+    HAL_NVIC_SetPriority(CAN1_TX_IRQn,  preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
 
     n_pCanHandle->Instance = CAN1;
@@ -168,10 +178,10 @@ void STM32_CAN::begin( bool retransmission ) {
     __HAL_RCC_CAN2_CLK_ENABLE();
 
     // NVIC configuration for CAN2 Reception complete interrupt
-    HAL_NVIC_SetPriority(CAN2_RX0_IRQn, 15, 0); // 15 is lowest possible priority
+    HAL_NVIC_SetPriority(CAN2_RX0_IRQn, preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN2_RX0_IRQn );
     // NVIC configuration for CAN2 Transmission complete interrupt
-    HAL_NVIC_SetPriority(CAN2_TX_IRQn, 15, 0); // 15 is lowest possible priority
+    HAL_NVIC_SetPriority(CAN2_TX_IRQn,  preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN2_TX_IRQn);
 
     n_pCanHandle->Instance = CAN2;
@@ -185,10 +195,10 @@ void STM32_CAN::begin( bool retransmission ) {
     __HAL_RCC_CAN3_CLK_ENABLE();
 
     // NVIC configuration for CAN3 Reception complete interrupt
-    HAL_NVIC_SetPriority(CAN3_RX0_IRQn, 15, 0); // 15 is lowest possible priority
+    HAL_NVIC_SetPriority(CAN3_RX0_IRQn, preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN3_RX0_IRQn );
     // NVIC configuration for CAN3 Transmission complete interrupt
-    HAL_NVIC_SetPriority(CAN3_TX_IRQn, 15, 0); // 15 is lowest possible priority
+    HAL_NVIC_SetPriority(CAN3_TX_IRQn,  preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN3_TX_IRQn);
 
     n_pCanHandle->Instance = CAN3;

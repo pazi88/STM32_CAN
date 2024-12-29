@@ -146,6 +146,7 @@ class STM32_CAN {
     STM32_CAN(CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     //legacy for compatibility
     STM32_CAN(CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+    void setIRQPriority(uint32_t preemptPriority, uint32_t subPriority);
     // Begin. By default the automatic retransmission is enabled. If it causes problems, use begin(false) to disable it.
     void begin(bool retransmission = false);
     void setBaudRate(uint32_t baud);
@@ -257,6 +258,9 @@ class STM32_CAN {
 
     PinName rx;
     PinName tx;
+
+    uint32_t preemptPriority;
+    uint32_t subPriority;
 
     CAN_HandleTypeDef *n_pCanHandle;
     CAN_TypeDef*      _canPort;
