@@ -62,6 +62,11 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
  * CAN1_RX1_IRQn | CAN1_RX1_IRQHandler
  * CAN1_SCE_IRQn | CAN1_SCE_IRQHandler
  */
+
+#ifdef USBCON
+#define STM32_CAN1_TX_RX0_BLOCKED_BY_USB
+#endif
+
 #endif
 #endif
 
@@ -98,6 +103,10 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
   #define CAN1_RX1_IRQHandler CAN_RX1_IRQHandler
   #define CAN1_SCE_IRQHandler CAN_SCE_IRQHandler
 
+  #ifdef USBCON
+  #define STM32_CAN1_TX_RX0_BLOCKED_BY_USB
+  #endif
+
 #elif defined(STM32F303x8) || defined(STM32F328xx) || defined(STM32F334x8)\
  || defined(STM32F358xx) || defined(STM32F373xC)\
  || defined(STM32F378xx) || defined(STM32F398xx)
@@ -117,6 +126,10 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
   #define CAN1_RX1_IRQHandler CAN_RX1_IRQHandler
   #define CAN1_SCE_IRQHandler CAN_SCE_IRQHandler
 #endif
+#endif
+
+#ifdef STM32_CAN1_TX_RX0_BLOCKED_BY_USB
+#error "USB and CAN interrupts are shared on the F1/F3 platform, driver is not compatible with USBDevice of Arduino core.
 #endif
 
 #include <Arduino.h>
