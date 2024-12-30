@@ -19,6 +19,8 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
 #ifndef STM32_CAN_H
 #define STM32_CAN_H
 
+#include <Arduino.h>
+
 /** Handling special cases for IRQ Handlers */
 #if defined(STM32F0xx)
 #if defined(STM32F042x6) || defined(STM32F072xB) || defined(STM32F091xC) || defined(STM32F098xx)
@@ -128,11 +130,13 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
 #endif
 #endif
 
-#ifdef STM32_CAN1_TX_RX0_BLOCKED_BY_USB
-#error "USB and CAN interrupts are shared on the F1/F3 platform, driver is not compatible with USBDevice of Arduino core.
+#if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && !defined(STM32_CAN_USB_WORKAROUND_POLLING)
+#error "USB and CAN interrupts are shared on the F1/F3 platform, driver is not compatible with USBDevice of Arduino core. Can define STM32_CAN_USB_WORKAROUND_POLLING to disable error msg and call STM32_CAN_Poll_IRQ_Handler to poll for Tx IRQ events. Only use FIFO 1."
+#elif defined(USBCON) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+#warning "CAN IRQ Handler is used by USBDevice driver, call STM32_CAN_Poll_IRQ_Handler() frequently to handle CAN events."
+extern "C" void STM32_CAN_Poll_IRQ_Handler(void);
 #endif
 
-#include <Arduino.h>
 
 // This struct is directly copied from Teensy FlexCAN library to retain compatibility with it. Not all are in use with STM32.
 // Source: https://github.com/tonton81/FlexCAN_T4/

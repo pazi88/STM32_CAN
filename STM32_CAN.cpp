@@ -1,5 +1,7 @@
 #include "STM32_CAN.h"
 
+#include "core_debug.h"
+
 #ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
 /** Pointer to CEC_HandleTypeDef structure that contains 
  * the configuration information for the specified CEC.
@@ -175,12 +177,18 @@ void STM32_CAN::begin( bool retransmission ) {
     HAL_NVIC_SetPriority(CAN1_IRQn_AIO, preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN1_IRQn_AIO);
     #else
+    #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+    /** CAN Tx and Rx0 blocked by USB, only using Rx1 */
+    HAL_NVIC_SetPriority(CAN1_RX1_IRQn,  preemptPriority, subPriority);
+    HAL_NVIC_EnableIRQ(CAN1_RX1_IRQn);
+    #else
     // NVIC configuration for CAN1 Reception complete interrupt
     HAL_NVIC_SetPriority(CAN1_RX0_IRQn, preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn );
     // NVIC configuration for CAN1 Transmission complete interrupt
     HAL_NVIC_SetPriority(CAN1_TX_IRQn,  preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+    #endif
     #endif /** else defined(CAN1_IRQn_AIO) */
 
     n_pCanHandle->Instance = CAN1;
@@ -245,7 +253,11 @@ void STM32_CAN::setBaudRate(uint32_t baud)
   HAL_CAN_Start( n_pCanHandle );
 
   // Activate CAN RX notification
+  #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+  HAL_CAN_ActivateNotification( n_pCanHandle, CAN_IT_RX_FIFO1_MSG_PENDING);
+  #else
   HAL_CAN_ActivateNotification( n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
+  #endif
 
   // Activate CAN TX notification
   HAL_CAN_ActivateNotification( n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
@@ -302,9 +314,19 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
 bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
 {
   bool ret;
+  #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+  __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO1_MSG_PENDING);
+  #else
   __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
+  #endif
+
   ret = removeFromRingBuffer(rxRing, CAN_rx_msg);
+
+  #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+  __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO1_MSG_PENDING);
+  #else
   __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
+  #endif
   return ret;
 }
 
@@ -315,6 +337,12 @@ bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, I
   sFilterConfig.FilterBank = bank_num;
   sFilterConfig.FilterMode = filter_mode;
   sFilterConfig.FilterScale = filter_scale;
+  #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+  if(fifo == CAN_RX_FIFO0)
+  {
+    core_debug("WARNING: RX0 IRQ is blocked by USB Driver. Events only handled by polling and RX1 events!\n");
+  }
+  #endif
   sFilterConfig.FilterFIFOAssignment = fifo;
   sFilterConfig.FilterActivation = ENABLE;
 
@@ -406,7 +434,11 @@ void STM32_CAN::initializeFilters()
   sFilterConfig.FilterIdLow = 0x0000;
   sFilterConfig.FilterMaskIdHigh = 0x0000;
   sFilterConfig.FilterMaskIdLow = 0x0000;
+  #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO1;
+  #else
   sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+  #endif
   sFilterConfig.FilterActivation = ENABLE;
   #ifdef CAN2
   // Filter banks from 14 to 27 are for Can2, so first for Can2 is bank 14. This is not relevant for devices with only one CAN
@@ -913,14 +945,22 @@ extern "C" void HAL_CAN_TxMailbox2CompleteCallback( CAN_HandleTypeDef *CanHandle
 }
 
 // This is called by RX0_IRQHandler when there is message at RX FIFO0 buffer
+#if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+extern "C" void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
+#else
 extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
+#endif
 {
   CAN_message_t rxmsg;
   CAN_RxHeaderTypeDef   RxHeader;
   //bool state = Disable_Interrupts();
 
   // move the message from RX FIFO0 to RX ringbuffer
+  #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+  if (HAL_CAN_GetRxMessage( CanHandle, CAN_RX_FIFO1, &RxHeader, rxmsg.buf ) == HAL_OK)
+  #else
   if (HAL_CAN_GetRxMessage( CanHandle, CAN_RX_FIFO0, &RxHeader, rxmsg.buf ) == HAL_OK)
+  #endif
   {
     if ( RxHeader.IDE == CAN_ID_STD )
     {
@@ -978,7 +1018,12 @@ extern "C" void CAN1_IRQHandler_AIO(void)
 #else
 
 // RX IRQ handlers
+#if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+/** If USB blocks TX and RX0 IRQs, will use RX1 by default*/
+extern "C" void CAN1_RX1_IRQHandler(void)
+#else
 extern "C" void CAN1_RX0_IRQHandler(void)
+#endif
 {
   HAL_CAN_IRQHandler(&hcan1);
 }
@@ -997,7 +1042,12 @@ extern "C" void CAN3_RX0_IRQHandler(void)
 #endif
 
 // TX IRQ handlers
+#if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+/** If USB blocks TX and RX0 IRQs, need to poll for Tx events*/
+extern "C" void STM32_CAN_Poll_IRQ_Handler(void)
+#else
 extern "C" void CAN1_TX_IRQHandler(void)
+#endif
 {
   HAL_CAN_IRQHandler(&hcan1);
 }
