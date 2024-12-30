@@ -32,6 +32,14 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
    */
   #define CAN1_IRQn_AIO       CEC_CAN_IRQn
   #define CAN1_IRQHandler_AIO CEC_CAN_IRQHandler
+  /**
+   * NOTE: CAN IRQ is shared with CEC
+   * To use CEC with CAN declare:
+   * CEC_HandleTypeDef * phcec;
+   * and point to your CEC handle.
+   * Internal IRQ Handler will call CEC Handler as well.
+   */
+  #define STM32_CAN1_SHARED_WITH_CEC
 
 #endif
 #endif

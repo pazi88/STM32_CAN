@@ -1,5 +1,14 @@
 #include "STM32_CAN.h"
 
+#ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
+/** Pointer to CEC_HandleTypeDef structure that contains 
+ * the configuration information for the specified CEC.
+ * Application have to declare them properly to be able to call
+ * the HAL_CEC_IRQHandler().
+ */
+extern CEC_HandleTypeDef * phcec;
+#endif
+
 //Max value, lowest priority
 #define MAX_IRQ_PRIO_VALUE ((1UL << __NVIC_PRIO_BITS) - 1UL)
 
@@ -754,7 +763,13 @@ void STM32_CAN::disableMBInterrupts()
   if (n_pCanHandle->Instance == CAN1)
   {
     #ifdef CAN1_IRQn_AIO
-    HAL_NVIC_DisableIRQ(CAN1_IRQn_AIO);
+    #ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
+    //only disable if cec instance is not set/used
+    if(!phcec)
+    #endif
+    {
+      HAL_NVIC_DisableIRQ(CAN1_IRQn_AIO);
+    }
     #else
     HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
     HAL_NVIC_DisableIRQ(CAN1_RX0_IRQn);
@@ -952,6 +967,12 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
 extern "C" void CAN1_IRQHandler_AIO(void)
 {
   HAL_CAN_IRQHandler(&hcan1);
+  #ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
+  if(phcec)
+  {
+    HAL_CEC_IRQHandler(phcec);
+  }
+  #endif
 }
 
 #else
