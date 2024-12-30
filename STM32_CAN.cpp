@@ -161,12 +161,18 @@ void STM32_CAN::begin( bool retransmission ) {
     //CAN1
     __HAL_RCC_CAN1_CLK_ENABLE();
 
+    #ifdef CAN1_IRQn_AIO
+    // NVIC configuration for CAN1 common interrupt
+    HAL_NVIC_SetPriority(CAN1_IRQn_AIO, preemptPriority, subPriority);
+    HAL_NVIC_EnableIRQ(CAN1_IRQn_AIO);
+    #else
     // NVIC configuration for CAN1 Reception complete interrupt
     HAL_NVIC_SetPriority(CAN1_RX0_IRQn, preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn );
     // NVIC configuration for CAN1 Transmission complete interrupt
     HAL_NVIC_SetPriority(CAN1_TX_IRQn,  preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+    #endif /** else defined(CAN1_IRQn_AIO) */
 
     n_pCanHandle->Instance = CAN1;
   }
@@ -720,7 +726,11 @@ void STM32_CAN::enableMBInterrupts()
 {
   if (n_pCanHandle->Instance == CAN1)
   {
+    #ifdef CAN1_IRQn_AIO
+    HAL_NVIC_EnableIRQ(CAN1_IRQn_AIO);
+    #else
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+    #endif /** else defined(CAN1_IRQn_AIO) */
   }
 #ifdef CAN2
   else if (n_pCanHandle->Instance == CAN2)
@@ -740,7 +750,11 @@ void STM32_CAN::disableMBInterrupts()
 {
   if (n_pCanHandle->Instance == CAN1)
   {
+    #ifdef CAN1_IRQn_AIO
+    HAL_NVIC_DisableIRQ(CAN1_IRQn_AIO);
+    #else
     HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
+    #endif /** else defined(CAN1_IRQn_AIO) */
   }
 #ifdef CAN2
   else if (n_pCanHandle->Instance == CAN2)
@@ -927,6 +941,15 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
   //Enable_Interrupts(state);
 }
 
+#ifdef CAN1_IRQHandler_AIO
+
+extern "C" void CAN1_IRQHandler_AIO(void)
+{
+  HAL_CAN_IRQHandler(&hcan1);
+}
+
+#else
+
 // RX IRQ handlers
 extern "C" void CAN1_RX0_IRQHandler(void)
 {
@@ -964,3 +987,6 @@ extern "C" void CAN3_TX_IRQHandler(void)
   HAL_CAN_IRQHandler(&hcan3);
 }
 #endif
+
+#endif /* CAN1_IRQHandler_AIO */
+

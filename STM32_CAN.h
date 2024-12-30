@@ -19,20 +19,96 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
 #ifndef STM32_CAN_H
 #define STM32_CAN_H
 
-// couple of workarounds
-#if defined(STM32F3xx)
-  #define GPIO_AF9_CAN1 GPIO_AF9_CAN
-  #define CAN1_RX0_IRQn CAN_RX0_IRQn
-  #define CAN1_TX_IRQn CAN_TX_IRQn
-  #define GPIO_SPEED_FREQ_VERY_HIGH GPIO_SPEED_FREQ_HIGH
-  #define CAN1_TX_IRQHandler CAN_TX_IRQHandler
-  #define CAN1_RX0_IRQHandler CAN_RX0_IRQHandler
+/** Handling special cases for IRQ Handlers */
+#if defined(STM32F0xx)
+#if defined(STM32F042x6) || defined(STM32F072xB) || defined(STM32F091xC) || defined(STM32F098xx)
+
+  /**
+   * NOTE: STM32F0 share IRQ Handler with HDMI CEC
+   * and there is only a single IRQ Handler not 4
+   * CEC_CAN_IRQn | CEC_CAN_IRQHandler
+   * 
+   * define all in one alias for IRQn and Handler
+   */
+  #define CAN1_IRQn_AIO       CEC_CAN_IRQn
+  #define CAN1_IRQHandler_AIO CEC_CAN_IRQHandler
+
+#endif
 #endif
 
-#if defined(STM32F0xx)
-  #define CAN1_TX_IRQn CEC_CAN_IRQn
-  #define CAN1_RX0_IRQn CEC_CAN_IRQn
-  #define CAN1_RX0_IRQHandler CEC_CAN_IRQHandler
+#if defined(STM32F1xx)
+#if defined(STM32F103x6) || defined(STM32F103xB) || defined(STM32F103xE) || defined(STM32F103xG)
+/**
+ * NOTE: STM32F103xx uses shared IRQ Handler with USB
+ * USB_HP_CAN1_TX_IRQn  | USB_HP_CAN1_TX_IRQHandler
+ * USB_LP_CAN1_RX0_IRQn | USB_LP_CAN1_RX0_IRQHandler
+ * 
+ * the CMSIS files define already aliases for the CAN *_IRQHandler and *_IRQn
+ * conforming with standard naming convention:
+ * CAN1_TX_IRQn  | CAN1_TX_IRQHandler
+ * CAN1_RX0_IRQn | CAN1_RX0_IRQHandler
+ * 
+ * when USB is enabled the USBDevice driver also implements these making a concurrent use impossible.
+ * 
+ * Following are unaffected:
+ * CAN1_RX1_IRQn | CAN1_RX1_IRQHandler
+ * CAN1_SCE_IRQn | CAN1_SCE_IRQHandler
+ */
+#endif
+#endif
+
+#if defined(STM32F3xx)
+#if defined(STM32F302x8) || defined(STM32F302xC) || defined(STM32F302xE)\
+ || defined(STM32F303xC) || defined(STM32F303xE)
+
+  /**
+   * NOTE: STM32F3 with USB share IRQ Handler with it
+   * USB_HP_CAN_TX_IRQn  | USB_HP_CAN_TX_IRQHandler
+   * USB_LP_CAN_RX0_IRQn | USB_LP_CAN_RX0_IRQHandler
+   * 
+   * the CMSIS files define already aliases for the CAN *_IRQHandler and *_IRQn
+   * missing peripheral index:
+   * CAN_TX_IRQn  | CAN_TX_IRQHandler
+   * CAN_RX0_IRQn | CAN_RX0_IRQHandler
+   * 
+   * when USB is enabled the USBDevice driver also implements these making a concurrent use impossible.
+   * 
+   * Following are unaffected:
+   * CAN_RX1_IRQn | CAN_RX1_IRQHandler
+   * CAN_SCE_IRQn | CAN_SCE_IRQHandler
+   * 
+   * define more aliases with peripheral index
+   */
+
+  #define CAN1_TX_IRQn      USB_HP_CAN_TX_IRQn
+  #define CAN1_RX0_IRQn     USB_LP_CAN_RX0_IRQn
+  #define CAN1_RX1_IRQn     CAN_RX1_IRQn
+  #define CAN1_SCE_IRQn     CAN_SCE_IRQn
+
+  #define CAN1_TX_IRQHandler  USB_HP_CAN_TX_IRQHandler
+  #define CAN1_RX0_IRQHandler USB_LP_CAN_RX0_IRQHandler
+  #define CAN1_RX1_IRQHandler CAN_RX1_IRQHandler
+  #define CAN1_SCE_IRQHandler CAN_SCE_IRQHandler
+
+#elif defined(STM32F303x8) || defined(STM32F328xx) || defined(STM32F334x8)\
+ || defined(STM32F358xx) || defined(STM32F373xC)\
+ || defined(STM32F378xx) || defined(STM32F398xx)
+
+  /**
+   * NOTE: STM32F3 without USB define symbols without peripheral index
+   * define more aliases with peripheral index
+   */
+
+  #define CAN1_TX_IRQn      CAN_TX_IRQn
+  #define CAN1_RX0_IRQn     CAN_RX0_IRQn
+  #define CAN1_RX1_IRQn     CAN_RX1_IRQn
+  #define CAN1_SCE_IRQn     CAN_SCE_IRQn
+  
+  #define CAN1_TX_IRQHandler  CAN_TX_IRQHandler
+  #define CAN1_RX0_IRQHandler CAN_RX0_IRQHandler
+  #define CAN1_RX1_IRQHandler CAN_RX1_IRQHandler
+  #define CAN1_SCE_IRQHandler CAN_SCE_IRQHandler
+#endif
 #endif
 
 #include <Arduino.h>
