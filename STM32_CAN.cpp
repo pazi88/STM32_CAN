@@ -730,18 +730,21 @@ void STM32_CAN::enableMBInterrupts()
     HAL_NVIC_EnableIRQ(CAN1_IRQn_AIO);
     #else
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+    HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
     #endif /** else defined(CAN1_IRQn_AIO) */
   }
 #ifdef CAN2
   else if (n_pCanHandle->Instance == CAN2)
   {
     HAL_NVIC_EnableIRQ(CAN2_TX_IRQn);
+    HAL_NVIC_EnableIRQ(CAN2_RX0_IRQn);
   }
 #endif
 #ifdef CAN3
   else if (n_pCanHandle->Instance == CAN3)
   {
     HAL_NVIC_EnableIRQ(CAN3_TX_IRQn);
+    HAL_NVIC_EnableIRQ(CAN3_RX0_IRQn);
   }
 #endif
 }
@@ -754,18 +757,21 @@ void STM32_CAN::disableMBInterrupts()
     HAL_NVIC_DisableIRQ(CAN1_IRQn_AIO);
     #else
     HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
+    HAL_NVIC_DisableIRQ(CAN1_RX0_IRQn);
     #endif /** else defined(CAN1_IRQn_AIO) */
   }
 #ifdef CAN2
   else if (n_pCanHandle->Instance == CAN2)
   {
     HAL_NVIC_DisableIRQ(CAN2_TX_IRQn);
+    HAL_NVIC_DisableIRQ(CAN2_RX0_IRQn);
   }
 #endif
 #ifdef CAN3
   else if (n_pCanHandle->Instance == CAN3)
   {
     HAL_NVIC_DisableIRQ(CAN3_TX_IRQn);
+    HAL_NVIC_DisableIRQ(CAN3_RX0_IRQn);
   }
 #endif
 }
