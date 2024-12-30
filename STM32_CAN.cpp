@@ -29,6 +29,15 @@ static STM32_CAN* _CAN3 = nullptr;
 static CAN_HandleTypeDef     hcan3;
 #endif
 
+STM32_CAN::STM32_CAN(uint32_t rx, uint32_t tx, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize)
+  : sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
+    mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
+{
+  this->rx = digitalPinToPinName(rx);
+  this->tx = digitalPinToPinName(tx);
+  init();
+}
+
 STM32_CAN::STM32_CAN(PinName rx, PinName tx, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize)
   : rx(rx), tx(tx), sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
     mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)

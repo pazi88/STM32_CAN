@@ -243,6 +243,7 @@ class STM32_CAN {
 
   public:
     // Default buffer sizes are set to 16. But this can be changed by using constructor in main code.
+    STM32_CAN(uint32_t rx, uint32_t tx = PNUM_NOT_DEFINED, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     STM32_CAN(PinName rx, PinName tx = NC, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     STM32_CAN(CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     //legacy for compatibility
