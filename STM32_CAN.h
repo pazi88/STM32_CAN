@@ -239,6 +239,12 @@ typedef enum IDE {
   AUTO = 2
 } IDE;
 
+typedef struct {
+  void * __this;
+  CAN_HandleTypeDef handle;
+  uint32_t bus;
+} stm32_can_t;
+
 class STM32_CAN {
 
   public:
@@ -364,8 +370,7 @@ class STM32_CAN {
     uint32_t preemptPriority;
     uint32_t subPriority;
 
-    CAN_HandleTypeDef *n_pCanHandle;
-    CAN_TypeDef*      _canPort;
+    stm32_can_t _can;
 
 };
 

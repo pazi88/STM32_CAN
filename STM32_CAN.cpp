@@ -17,17 +17,54 @@ extern CEC_HandleTypeDef * phcec;
 constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_48M[];
 constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_45M[];
 
-static STM32_CAN* _CAN1 = nullptr;
-static CAN_HandleTypeDef     hcan1;
 uint32_t test = 0;
+
+typedef enum {
+#ifdef CAN1
+  CAN1_INDEX,
+#endif
 #ifdef CAN2
-static STM32_CAN* _CAN2 = nullptr;
-static CAN_HandleTypeDef     hcan2;
+  CAN2_INDEX,
 #endif
 #ifdef CAN3
-static STM32_CAN* _CAN3 = nullptr;
-static CAN_HandleTypeDef     hcan3;
+  CAN3_INDEX,
 #endif
+  CAN_NUM,
+  CAN_UNKNOWN = 0xFFFF
+} can_index_t;
+
+static stm32_can_t * canObj[CAN_NUM] = {NULL};
+
+stm32_can_t *get_can_obj(CAN_HandleTypeDef *hcan)
+{
+  stm32_can_t *obj;
+  obj = (stm32_can_t *)((char *)hcan - offsetof(stm32_can_t, handle));
+  return (obj);
+}
+
+can_index_t get_can_index(CAN_TypeDef *instance)
+{
+  can_index_t index = CAN_UNKNOWN;
+#if defined(CAN1)
+  if (instance == CAN1) {
+    index = CAN1_INDEX;
+  }
+#endif
+#if defined(CAN2)
+  if (instance == CAN2) {
+    index = CAN2_INDEX;
+  }
+#endif
+#if defined(CAN3)
+  if (instance == CAN3) {
+    index = CAN3_INDEX;
+  }
+#endif
+  if (index == CAN_UNKNOWN) {
+    Error_Handler();
+  }
+  return index;
+}
 
 STM32_CAN::STM32_CAN(uint32_t rx, uint32_t tx, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize)
   : sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
@@ -117,6 +154,9 @@ STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize,
 
 void STM32_CAN::init(void)
 {
+  _can.__this = (void*)this;
+  _can.handle.Instance = nullptr;
+
   CAN_TypeDef * canPort_rx = (CAN_TypeDef *) pinmap_peripheral(rx, PinMap_CAN_RD);
   CAN_TypeDef * canPort_tx = (CAN_TypeDef *) pinmap_peripheral(tx, PinMap_CAN_TD);
   if ((canPort_rx != canPort_tx && canPort_tx != NP) || canPort_rx == NP)
@@ -132,27 +172,7 @@ void STM32_CAN::init(void)
   if(canPort_tx == NP)
     tx = NC;
 
-  if (canPort_rx == CAN1)
-  {
-    _CAN1 = this;
-    n_pCanHandle = &hcan1;
-  }
-  #ifdef CAN2
-  if( canPort_rx == CAN2)
-  {
-    _CAN2 = this;
-    n_pCanHandle = &hcan2;
-  }
-  #endif
-  #ifdef CAN3
-  if (canPort_rx == CAN3)
-  {
-    _CAN3 = this;
-    n_pCanHandle = &hcan3;
-  }
-  #endif
-
-  _canPort = canPort_rx;
+  _can.handle.Instance = canPort_rx;
 }
 
 void STM32_CAN::setIRQPriority(uint32_t preemptPriority, uint32_t subPriority)
@@ -176,7 +196,7 @@ void STM32_CAN::begin( bool retransmission ) {
   pin_function(tx, pinmap_function(tx, PinMap_CAN_TD));
 
   // Configure CAN
-  if (_canPort == CAN1)
+  if (_can.handle.Instance == CAN1)
   {
     //CAN1
     __HAL_RCC_CAN1_CLK_ENABLE();
@@ -200,10 +220,10 @@ void STM32_CAN::begin( bool retransmission ) {
     #endif
     #endif /** else defined(CAN1_IRQn_AIO) */
 
-    n_pCanHandle->Instance = CAN1;
+    _can.bus = 1;
   }
 #ifdef CAN2
-  else if (_canPort == CAN2)
+  else if (_can.handle.Instance == CAN2)
   {
     //CAN2
     __HAL_RCC_CAN1_CLK_ENABLE(); // CAN1 clock needs to be enabled too, because CAN2 works as CAN1 slave.
@@ -216,12 +236,12 @@ void STM32_CAN::begin( bool retransmission ) {
     HAL_NVIC_SetPriority(CAN2_TX_IRQn,  preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN2_TX_IRQn);
 
-    n_pCanHandle->Instance = CAN2;
+    _can.bus = 2;
   }
 #endif
 
 #ifdef CAN3
-  else if (_canPort == CAN3)
+  else if (_can.handle.Instance == CAN3)
   {
     //CAN3
     __HAL_RCC_CAN3_CLK_ENABLE();
@@ -233,43 +253,56 @@ void STM32_CAN::begin( bool retransmission ) {
     HAL_NVIC_SetPriority(CAN3_TX_IRQn,  preemptPriority, subPriority);
     HAL_NVIC_EnableIRQ(CAN3_TX_IRQn);
 
-    n_pCanHandle->Instance = CAN3;
+    _can.bus = 3;
   }
 #endif
 
-  n_pCanHandle->Init.TimeTriggeredMode = DISABLE;
-  n_pCanHandle->Init.AutoBusOff = DISABLE;
-  n_pCanHandle->Init.AutoWakeUp = DISABLE;
-  if (retransmission){ n_pCanHandle->Init.AutoRetransmission  = ENABLE; }
-  else { n_pCanHandle->Init.AutoRetransmission  = DISABLE; }
-  n_pCanHandle->Init.ReceiveFifoLocked  = DISABLE;
-  n_pCanHandle->Init.TransmitFifoPriority = ENABLE;
-  n_pCanHandle->Init.Mode = mode;
+  _can.handle.Init.TimeTriggeredMode = DISABLE;
+  _can.handle.Init.AutoBusOff = DISABLE;
+  _can.handle.Init.AutoWakeUp = DISABLE;
+  if (retransmission){ _can.handle.Init.AutoRetransmission  = ENABLE; }
+  else { _can.handle.Init.AutoRetransmission  = DISABLE; }
+  _can.handle.Init.ReceiveFifoLocked  = DISABLE;
+  _can.handle.Init.TransmitFifoPriority = ENABLE;
+  _can.handle.Init.Mode = mode;
 }
 
 void STM32_CAN::setBaudRate(uint32_t baud)
 {
+  can_index_t index = get_can_index(_can.handle.Instance);
+  if(index >= CAN_NUM)
+  {
+    return;
+  }
+  if(canObj[index])
+  {
+    //bus already in use by other instance
+    Error_Handler();
+    return;
+  }
+  //register with global, we own this instance now
+  canObj[index] = &_can;
 
   // Calculate and set baudrate
-  calculateBaudrate( n_pCanHandle, baud );
+  calculateBaudrate( &_can.handle, baud );
 
   // Initializes CAN
-  HAL_CAN_Init( n_pCanHandle );
+  HAL_CAN_Init( &_can.handle );
 
   initializeFilters();
 
   // Start the CAN peripheral
-  HAL_CAN_Start( n_pCanHandle );
+  HAL_CAN_Start( &_can.handle );
 
   // Activate CAN RX notification
   #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
-  HAL_CAN_ActivateNotification( n_pCanHandle, CAN_IT_RX_FIFO1_MSG_PENDING);
+  HAL_CAN_ActivateNotification( &_can.handle, CAN_IT_RX_FIFO1_MSG_PENDING);
   #else
-  HAL_CAN_ActivateNotification( n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
+  HAL_CAN_ActivateNotification( &_can.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
   #endif
 
   // Activate CAN TX notification
-  HAL_CAN_ActivateNotification( n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
+  HAL_CAN_ActivateNotification( &_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
 }
 
 bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
@@ -278,7 +311,7 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
   uint32_t TxMailbox;
   CAN_TxHeaderTypeDef TxHeader;
 
-  __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
+  __HAL_CAN_DISABLE_IT(&_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
 
   if (CAN_tx_msg.flags.extended == 1) // Extended ID when CAN_tx_msg.flags.extended is 1
   {
@@ -303,7 +336,7 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
 
   TxHeader.TransmitGlobalTime = DISABLE;
 
-  if(HAL_CAN_AddTxMessage( n_pCanHandle, &TxHeader, CAN_tx_msg.buf, &TxMailbox) != HAL_OK)
+  if(HAL_CAN_AddTxMessage( &_can.handle, &TxHeader, CAN_tx_msg.buf, &TxMailbox) != HAL_OK)
   {
     /* in normal situation we add up the message to TX ring buffer, if there is no free TX mailbox. But the TX mailbox interrupt is using this same function
     to move the messages from ring buffer to empty TX mailboxes, so for that use case, there is this check */
@@ -316,7 +349,7 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
     }
     else { ret = false; }
   }
-  __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_TX_MAILBOX_EMPTY);
+  __HAL_CAN_ENABLE_IT(&_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
   return ret;
 }
 
@@ -324,17 +357,17 @@ bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
 {
   bool ret;
   #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
-  __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO1_MSG_PENDING);
+  __HAL_CAN_DISABLE_IT(&_can.handle, CAN_IT_RX_FIFO1_MSG_PENDING);
   #else
-  __HAL_CAN_DISABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
+  __HAL_CAN_DISABLE_IT(&_can.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
   #endif
 
   ret = removeFromRingBuffer(rxRing, CAN_rx_msg);
 
   #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
-  __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO1_MSG_PENDING);
+  __HAL_CAN_ENABLE_IT(&_can.handle, CAN_IT_RX_FIFO1_MSG_PENDING);
   #else
-  __HAL_CAN_ENABLE_IT(n_pCanHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
+  __HAL_CAN_ENABLE_IT(&_can.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
   #endif
   return ret;
 }
@@ -375,7 +408,7 @@ bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, I
   }
 
   // Enable filter
-  if (HAL_CAN_ConfigFilter( n_pCanHandle, &sFilterConfig ) != HAL_OK)
+  if (HAL_CAN_ConfigFilter( &_can.handle, &sFilterConfig ) != HAL_OK)
   {
     return 1;
   }
@@ -392,7 +425,7 @@ void STM32_CAN::setMBFilter(CAN_BANK bank_num, CAN_FLTEN input)
   if (input == ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
   else { sFilterConfig.FilterActivation = DISABLE; }
 
-  HAL_CAN_ConfigFilter(n_pCanHandle, &sFilterConfig);
+  HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
 }
 
 void STM32_CAN::setMBFilter(CAN_FLTEN input)
@@ -401,15 +434,15 @@ void STM32_CAN::setMBFilter(CAN_FLTEN input)
   uint8_t max_bank_num = 27;
   uint8_t min_bank_num = 0;
   #ifdef CAN2
-  if (_canPort == CAN1){ max_bank_num = 13;}
-  else if (_canPort == CAN2){ min_bank_num = 14;}
+  if (_can.handle.Instance == CAN1){ max_bank_num = 13;}
+  else if (_can.handle.Instance == CAN2){ min_bank_num = 14;}
   #endif
   for (uint8_t bank_num = min_bank_num ; bank_num <= max_bank_num ; bank_num++)
   {
     sFilterConfig.FilterBank = bank_num;
     if (input == ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
     else { sFilterConfig.FilterActivation = DISABLE; }
-    HAL_CAN_ConfigFilter(n_pCanHandle, &sFilterConfig);
+    HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
   }
 }
 
@@ -451,17 +484,17 @@ void STM32_CAN::initializeFilters()
   sFilterConfig.FilterActivation = ENABLE;
   #ifdef CAN2
   // Filter banks from 14 to 27 are for Can2, so first for Can2 is bank 14. This is not relevant for devices with only one CAN
-  if (_canPort == CAN1)
+  if (_can.handle.Instance == CAN1)
   {
     sFilterConfig.SlaveStartFilterBank = 14;
   }
-  if (_canPort == CAN2)
+  if (_can.handle.Instance == CAN2)
   {
     sFilterConfig.FilterBank = 14;
   }
   #endif
 
-  HAL_CAN_ConfigFilter(n_pCanHandle, &sFilterConfig);
+  HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
 }
 
 void STM32_CAN::initializeBuffers()
@@ -774,7 +807,7 @@ uint32_t STM32_CAN::getAPB1Clock()
 
 void STM32_CAN::enableMBInterrupts()
 {
-  if (n_pCanHandle->Instance == CAN1)
+  if (_can.handle.Instance == CAN1)
   {
     #ifdef CAN1_IRQn_AIO
     HAL_NVIC_EnableIRQ(CAN1_IRQn_AIO);
@@ -784,14 +817,14 @@ void STM32_CAN::enableMBInterrupts()
     #endif /** else defined(CAN1_IRQn_AIO) */
   }
 #ifdef CAN2
-  else if (n_pCanHandle->Instance == CAN2)
+  else if (_can.handle.Instance == CAN2)
   {
     HAL_NVIC_EnableIRQ(CAN2_TX_IRQn);
     HAL_NVIC_EnableIRQ(CAN2_RX0_IRQn);
   }
 #endif
 #ifdef CAN3
-  else if (n_pCanHandle->Instance == CAN3)
+  else if (_can.handle.Instance == CAN3)
   {
     HAL_NVIC_EnableIRQ(CAN3_TX_IRQn);
     HAL_NVIC_EnableIRQ(CAN3_RX0_IRQn);
@@ -801,7 +834,7 @@ void STM32_CAN::enableMBInterrupts()
 
 void STM32_CAN::disableMBInterrupts()
 {
-  if (n_pCanHandle->Instance == CAN1)
+  if (_can.handle.Instance == CAN1)
   {
     #ifdef CAN1_IRQn_AIO
     #ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
@@ -817,14 +850,14 @@ void STM32_CAN::disableMBInterrupts()
     #endif /** else defined(CAN1_IRQn_AIO) */
   }
 #ifdef CAN2
-  else if (n_pCanHandle->Instance == CAN2)
+  else if (_can.handle.Instance == CAN2)
   {
     HAL_NVIC_DisableIRQ(CAN2_TX_IRQn);
     HAL_NVIC_DisableIRQ(CAN2_RX0_IRQn);
   }
 #endif
 #ifdef CAN3
-  else if (n_pCanHandle->Instance == CAN3)
+  else if (_can.handle.Instance == CAN3)
   {
     HAL_NVIC_DisableIRQ(CAN3_TX_IRQn);
     HAL_NVIC_DisableIRQ(CAN3_RX0_IRQn);
@@ -835,7 +868,7 @@ void STM32_CAN::disableMBInterrupts()
 void STM32_CAN::setMode(Mode mode)
 {
   this->mode = mode;
-  n_pCanHandle->Init.Mode = mode;
+  _can.handle.Init.Mode = mode;
 }
 
 void STM32_CAN::enableLoopBack( bool yes ) {
@@ -862,96 +895,39 @@ void STM32_CAN::enableFIFO(bool status)
 // There is 3 TX mailboxes. Each one has own transmit complete callback function, that we use to pull next message from TX ringbuffer to be sent out in TX mailbox.
 extern "C" void HAL_CAN_TxMailbox0CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
+  stm32_can_t * canObj = get_can_obj(CanHandle);
+  STM32_CAN * _can = (STM32_CAN *)canObj->__this;
   CAN_message_t txmsg;
-  // use correct CAN instance
-  if (CanHandle->Instance == CAN1) 
+
+  if (_can->removeFromRingBuffer(_can->txRing, txmsg))
   {
-    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
-    {
-      _CAN1->write(txmsg, true);
-    }
+    _can->write(txmsg, true);
   }
-#ifdef CAN2
-  else if (CanHandle->Instance == CAN2) 
-  {
-    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
-    {
-      _CAN2->write(txmsg, true);
-    }
-  }
-#endif
-#ifdef CAN3
-  else if (CanHandle->Instance == CAN3) 
-  {
-    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
-    {
-      _CAN3->write(txmsg, true);
-    }
-  }
-#endif
 }
 
 extern "C" void HAL_CAN_TxMailbox1CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
+  stm32_can_t * canObj = get_can_obj(CanHandle);
+  STM32_CAN * _can = (STM32_CAN *)canObj->__this;
   CAN_message_t txmsg;
-  // use correct CAN instance
-  if (CanHandle->Instance == CAN1) 
+
+  if (_can->removeFromRingBuffer(_can->txRing, txmsg))
   {
-    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
-    {
-      _CAN1->write(txmsg, true);
-    }
+    _can->write(txmsg, true);
   }
-#ifdef CAN2
-  else if (CanHandle->Instance == CAN2) 
-  {
-    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
-    {
-      _CAN2->write(txmsg, true);
-    }
-  }
-#endif
-#ifdef CAN3
-  else if (CanHandle->Instance == CAN3) 
-  {
-    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
-    {
-      _CAN3->write(txmsg, true);
-    }
-  }
-#endif
 }
 
 extern "C" void HAL_CAN_TxMailbox2CompleteCallback( CAN_HandleTypeDef *CanHandle )
 {
+  stm32_can_t * canObj = get_can_obj(CanHandle);
+  STM32_CAN * _can = (STM32_CAN *)canObj->__this;
   CAN_message_t txmsg;
-  // use correct CAN instance
-  if (CanHandle->Instance == CAN1) 
-  {
-    if (_CAN1->removeFromRingBuffer(_CAN1->txRing, txmsg))
+
+  if (_can->removeFromRingBuffer(_can->txRing, txmsg))
     {
-      _CAN1->write(txmsg, true);
+    _can->write(txmsg, true);
     }
   }
-#ifdef CAN2
-  else if (CanHandle->Instance == CAN2) 
-  {
-    if (_CAN2->removeFromRingBuffer(_CAN2->txRing, txmsg))
-    {
-      _CAN2->write(txmsg, true);
-    }
-  }
-#endif
-#ifdef CAN3
-  else if (CanHandle->Instance == CAN3) 
-  {
-    if (_CAN3->removeFromRingBuffer(_CAN3->txRing, txmsg))
-    {
-      _CAN3->write(txmsg, true);
-    }
-  }
-#endif
-}
 
 // This is called by RX0_IRQHandler when there is message at RX FIFO0 buffer
 #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
@@ -960,6 +936,8 @@ extern "C" void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
 extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
 #endif
 {
+  stm32_can_t * canObj = get_can_obj(CanHandle);
+  STM32_CAN * _can = (STM32_CAN *)canObj->__this;
   CAN_message_t rxmsg;
   CAN_RxHeaderTypeDef   RxHeader;
   //bool state = Disable_Interrupts();
@@ -987,26 +965,8 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
     rxmsg.timestamp    = RxHeader.Timestamp;
     rxmsg.len          = RxHeader.DLC;
 
-    // use correct ring buffer based on CAN instance
-    if (CanHandle->Instance == CAN1)
-    {
-      rxmsg.bus = 1;
-      _CAN1->addToRingBuffer(_CAN1->rxRing, rxmsg);
-    }
-#ifdef CAN2
-    else if (CanHandle->Instance == CAN2)
-    {
-      rxmsg.bus = 2;
-      _CAN2->addToRingBuffer(_CAN2->rxRing, rxmsg);
-    }
-#endif
-#ifdef CAN3
-    else if (CanHandle->Instance == CAN3)
-    {
-      rxmsg.bus = 3;
-      _CAN3->addToRingBuffer(_CAN3->rxRing, rxmsg);
-    }
-#endif
+    rxmsg.bus = canObj->bus;
+    _can->addToRingBuffer(_can->rxRing, rxmsg);
   }
   //Enable_Interrupts(state);
 }
@@ -1015,7 +975,9 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
 
 extern "C" void CAN1_IRQHandler_AIO(void)
 {
-  HAL_CAN_IRQHandler(&hcan1);
+  if(canObj[CAN1_INDEX]) {
+    HAL_CAN_IRQHandler(&canObj[CAN1_INDEX]->handle);
+  }
   #ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
   if(phcec)
   {
@@ -1034,19 +996,25 @@ extern "C" void CAN1_RX1_IRQHandler(void)
 extern "C" void CAN1_RX0_IRQHandler(void)
 #endif
 {
-  HAL_CAN_IRQHandler(&hcan1);
+  if(canObj[CAN1_INDEX]) {
+    HAL_CAN_IRQHandler(&canObj[CAN1_INDEX]->handle);
+  }
 }
 
 #ifdef CAN2
 extern "C" void CAN2_RX0_IRQHandler(void)
 {
-  HAL_CAN_IRQHandler(&hcan2);
+  if(canObj[CAN2_INDEX]) {
+    HAL_CAN_IRQHandler(&canObj[CAN2_INDEX]->handle);
+  }
 }
 #endif
 #ifdef CAN3
 extern "C" void CAN3_RX0_IRQHandler(void)
 {
-  HAL_CAN_IRQHandler(&hcan3);
+  if(canObj[CAN3_INDEX]) {
+    HAL_CAN_IRQHandler(&canObj[CAN3_INDEX]->handle);
+  }
 }
 #endif
 
@@ -1058,19 +1026,25 @@ extern "C" void STM32_CAN_Poll_IRQ_Handler(void)
 extern "C" void CAN1_TX_IRQHandler(void)
 #endif
 {
-  HAL_CAN_IRQHandler(&hcan1);
+  if(canObj[CAN1_INDEX]) {
+    HAL_CAN_IRQHandler(&canObj[CAN1_INDEX]->handle);
+  }
 }
 
 #ifdef CAN2
 extern "C" void CAN2_TX_IRQHandler(void)
 {
-  HAL_CAN_IRQHandler(&hcan2);
+  if(canObj[CAN2_INDEX]) {
+    HAL_CAN_IRQHandler(&canObj[CAN2_INDEX]->handle);
+  }
 }
 #endif
 #ifdef CAN3
 extern "C" void CAN3_TX_IRQHandler(void)
 {
-  HAL_CAN_IRQHandler(&hcan3);
+  if(canObj[CAN3_INDEX]) {
+    HAL_CAN_IRQHandler(&canObj[CAN3_INDEX]->handle);
+  }
 }
 #endif
 
