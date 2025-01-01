@@ -66,6 +66,34 @@ can_index_t get_can_index(CAN_TypeDef *instance)
   return index;
 }
 
+bool STM32_CAN::allocatePeripheral()
+{
+  can_index_t index = get_can_index(_can.handle.Instance);
+  if(index >= CAN_NUM)
+  {
+    return false;
+  }
+  if(canObj[index])
+  {
+    //bus already in use by other instance
+    Error_Handler();
+    return false;
+  }
+  //register with global, we own this instance now
+  canObj[index] = &_can;
+  return true;
+}
+
+bool STM32_CAN::hasPeripheral()
+{
+  can_index_t index = get_can_index(_can.handle.Instance);
+  if(index >= CAN_NUM)
+  {
+    return false;
+  }
+  return canObj[index] == &_can;
+}
+
 STM32_CAN::STM32_CAN(uint32_t rx, uint32_t tx, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize)
   : sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
     mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
@@ -156,7 +184,10 @@ void STM32_CAN::init(void)
 {
   _can.__this = (void*)this;
   _can.handle.Instance = nullptr;
+}
 
+CAN_TypeDef * STM32_CAN::getPeripheral()
+{
   CAN_TypeDef * canPort_rx = (CAN_TypeDef *) pinmap_peripheral(rx, PinMap_CAN_RD);
   CAN_TypeDef * canPort_tx = (CAN_TypeDef *) pinmap_peripheral(tx, PinMap_CAN_TD);
   if ((canPort_rx != canPort_tx && canPort_tx != NP) || canPort_rx == NP)
@@ -165,14 +196,14 @@ void STM32_CAN::init(void)
     // rx only can be used as listen only but needs a 3rd node for valid ACKs
 
     // do not allow Tx only since that would break arbitration
-    return;
+    return NP;
   }
 
   //clear tx pin in case it was set but does not match a peripheral
   if(canPort_tx == NP)
     tx = NC;
 
-  _can.handle.Instance = canPort_rx;
+  return canPort_rx;
 }
 
 void STM32_CAN::setIRQPriority(uint32_t preemptPriority, uint32_t subPriority)
@@ -187,6 +218,19 @@ void STM32_CAN::begin( bool retransmission ) {
 
   // exit if CAN already is active
   if (_canIsActive) return;
+
+  _can.handle.Instance = getPeripheral();
+  if(_can.handle.Instance == NP)
+  {
+    //impossible pinconfig, done here
+    _can.handle.Instance = nullptr;
+    return;
+  }
+  if(!allocatePeripheral())
+  {
+    //peripheral already in use
+    return;
+  }
 
   _canIsActive = true;
 
@@ -272,19 +316,10 @@ void STM32_CAN::begin( bool retransmission ) {
 
 void STM32_CAN::setBaudRate(uint32_t baud)
 {
-  can_index_t index = get_can_index(_can.handle.Instance);
-  if(index >= CAN_NUM)
+  if(!hasPeripheral())
   {
     return;
   }
-  if(canObj[index])
-  {
-    //bus already in use by other instance
-    Error_Handler();
-    return;
-  }
-  //register with global, we own this instance now
-  canObj[index] = &_can;
 
   // Calculate and set baudrate
   calculateBaudrate( &_can.handle, baud );

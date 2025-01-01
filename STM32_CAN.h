@@ -304,6 +304,9 @@ class STM32_CAN {
 
   private:
     void      init(void);
+    CAN_TypeDef * getPeripheral(void);
+    bool      allocatePeripheral(void);
+    bool      hasPeripheral(void);
     void      initializeFilters();
     bool      isInitialized() { return rx_buffer != 0; }
     void      initRingBuffer(RingbufferTypeDef &ring, volatile CAN_message_t *buffer, uint32_t size);
