@@ -257,6 +257,7 @@ class STM32_CAN {
     void setIRQPriority(uint32_t preemptPriority, uint32_t subPriority);
     // Begin. By default the automatic retransmission is enabled. If it causes problems, use begin(false) to disable it.
     void begin(bool retransmission = false);
+    void end(void);
     void setBaudRate(uint32_t baud);
     bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
     bool read(CAN_message_t &CAN_rx_msg);
@@ -306,6 +307,7 @@ class STM32_CAN {
     void      init(void);
     CAN_TypeDef * getPeripheral(void);
     bool      allocatePeripheral(void);
+    bool      freePeripheral(void);
     bool      hasPeripheral(void);
     void      start(void);
     void      stop(void);
@@ -313,6 +315,7 @@ class STM32_CAN {
     bool      isInitialized() { return rx_buffer != 0; }
     void      initRingBuffer(RingbufferTypeDef &ring, volatile CAN_message_t *buffer, uint32_t size);
     void      initializeBuffers(void);
+    void      freeBuffers(void);
     bool      isRingBufferEmpty(RingbufferTypeDef &ring);
     uint32_t  ringBufferCount(RingbufferTypeDef &ring);
 

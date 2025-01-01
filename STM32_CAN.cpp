@@ -84,6 +84,23 @@ bool STM32_CAN::allocatePeripheral()
   return true;
 }
 
+bool STM32_CAN::freePeripheral()
+{
+  can_index_t index = get_can_index(_can.handle.Instance);
+  if(index >= CAN_NUM)
+  {
+    return false;
+  }
+  if(canObj[index] == &_can)
+  {
+    canObj[index] = nullptr;
+    _can.handle.Instance = nullptr;
+    return true;
+  }
+  Error_Handler();
+  return false;
+}
+
 bool STM32_CAN::hasPeripheral()
 {
   can_index_t index = get_can_index(_can.handle.Instance);
@@ -319,6 +336,51 @@ void STM32_CAN::begin( bool retransmission ) {
 
   //try to start in case baudrate was set earlier
   setBaudRate(baudrate);
+}
+
+void STM32_CAN::end()
+{
+  if(!hasPeripheral())
+  {
+    return;
+  }
+
+  stop();
+  
+  disableMBInterrupts();
+
+  if (_can.handle.Instance == CAN1)
+  {
+    __HAL_RCC_CAN1_CLK_DISABLE();
+  }
+#ifdef CAN2
+  else if (_can.handle.Instance == CAN2)
+  {
+    __HAL_RCC_CAN2_CLK_DISABLE();
+    //only disable CAN1 clock if its not used
+    if(canObj[CAN1_INDEX] == nullptr)
+    {
+      __HAL_RCC_CAN1_CLK_DISABLE();
+    } 
+  }
+#endif
+#ifdef CAN3
+  else if (_can.handle.Instance == CAN3)
+  {
+    __HAL_RCC_CAN3_CLK_DISABLE();
+  }
+#endif
+
+  /** un-init pins, enable tx PULLUP for weak driving of recessive state */
+  pin_function(rx, STM_PIN_DATA(STM_MODE_INPUT, GPIO_NOPULL, GPIO_AF_NONE));
+  if(tx != NC)
+    pin_function(tx, STM_PIN_DATA(STM_MODE_INPUT, GPIO_PULLUP, GPIO_AF_NONE));
+
+  freeBuffers();
+
+  freePeripheral();
+
+  _canIsActive = false;
 }
 
 void STM32_CAN::setBaudRate(uint32_t baud)
@@ -595,6 +657,21 @@ void STM32_CAN::initializeBuffers()
       rx_buffer=new CAN_message_t[sizeRxBuffer];
     }
     initRingBuffer(rxRing, rx_buffer, sizeRxBuffer);
+}
+
+void STM32_CAN::freeBuffers()
+{
+  txRing.head = 0;
+  txRing.tail = 0;
+  txRing.buffer = nullptr;
+  delete[] tx_buffer;
+  tx_buffer = nullptr;
+
+  rxRing.head = 0;
+  rxRing.tail = 0;
+  rxRing.buffer = nullptr;
+  delete[] rx_buffer;
+  rx_buffer = nullptr;
 }
 
 void STM32_CAN::initRingBuffer(RingbufferTypeDef &ring, volatile CAN_message_t *buffer, uint32_t size)
