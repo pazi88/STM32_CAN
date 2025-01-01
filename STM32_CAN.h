@@ -122,7 +122,7 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
   #define CAN1_RX0_IRQn     CAN_RX0_IRQn
   #define CAN1_RX1_IRQn     CAN_RX1_IRQn
   #define CAN1_SCE_IRQn     CAN_SCE_IRQn
-  
+
   #define CAN1_TX_IRQHandler  CAN_TX_IRQHandler
   #define CAN1_RX0_IRQHandler CAN_RX0_IRQHandler
   #define CAN1_RX1_IRQHandler CAN_RX1_IRQHandler
@@ -307,6 +307,8 @@ class STM32_CAN {
     CAN_TypeDef * getPeripheral(void);
     bool      allocatePeripheral(void);
     bool      hasPeripheral(void);
+    void      start(void);
+    void      stop(void);
     void      initializeFilters();
     bool      isInitialized() { return rx_buffer != 0; }
     void      initRingBuffer(RingbufferTypeDef &ring, volatile CAN_message_t *buffer, uint32_t size);

@@ -330,6 +330,13 @@ void STM32_CAN::setBaudRate(uint32_t baud)
   // Calculate and set baudrate
   calculateBaudrate( &_can.handle, baud );
 
+  // (re)-start
+  stop();
+  start();
+}
+
+void STM32_CAN::start()
+{
   // Initializes CAN
   HAL_CAN_Init( &_can.handle );
 
@@ -345,6 +352,19 @@ void STM32_CAN::setBaudRate(uint32_t baud)
   HAL_CAN_ActivateNotification( &_can.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
   HAL_CAN_ActivateNotification( &_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
   #endif
+}
+
+void STM32_CAN::stop()
+{
+  #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+  HAL_CAN_DeactivateNotification( &_can.handle, CAN_IT_RX_FIFO1_MSG_PENDING);
+  #else
+  HAL_CAN_DeactivateNotification( &_can.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
+  HAL_CAN_DeactivateNotification( &_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
+  #endif
+
+  /** Calls Stop internally, clears all errors */
+  HAL_CAN_DeInit( &_can.handle );
 }
 
 bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
@@ -410,7 +430,7 @@ bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
   __HAL_CAN_DISABLE_IT(&_can.handle, CAN_IT_RX_FIFO1_MSG_PENDING);
   #else
   __HAL_CAN_DISABLE_IT(&_can.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
-  #endif
+#endif
 
   ret = removeFromRingBuffer(rxRing, CAN_rx_msg);
 
@@ -418,7 +438,7 @@ bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
   __HAL_CAN_ENABLE_IT(&_can.handle, CAN_IT_RX_FIFO1_MSG_PENDING);
   #else
   __HAL_CAN_ENABLE_IT(&_can.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
-  #endif
+#endif
   return ret;
 }
 
@@ -524,7 +544,7 @@ void STM32_CAN::initializeFilters()
 {
   CAN_FilterTypeDef sFilterConfig;
   if(!_can.handle.Instance) return;
-  
+
   // We set first bank to accept all RX messages
   sFilterConfig.FilterBank = 0;
   sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
@@ -543,7 +563,7 @@ void STM32_CAN::initializeFilters()
   // Filter banks from 14 to 27 are for Can2, so first for Can2 is bank 14. This is not relevant for devices with only one CAN
   if (_can.handle.Instance == CAN1)
   {
-    sFilterConfig.SlaveStartFilterBank = 14;
+  sFilterConfig.SlaveStartFilterBank = 14;
   }
   if (_can.handle.Instance == CAN2)
   {
@@ -989,10 +1009,10 @@ extern "C" void HAL_CAN_TxMailbox2CompleteCallback( CAN_HandleTypeDef *CanHandle
   CAN_message_t txmsg;
 
   if (_can->removeFromRingBuffer(_can->txRing, txmsg))
-    {
+  {
     _can->write(txmsg, true);
-    }
   }
+}
 
 // This is called by RX0_IRQHandler when there is message at RX FIFO0 buffer
 #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
