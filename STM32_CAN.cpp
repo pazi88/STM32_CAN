@@ -185,6 +185,7 @@ void STM32_CAN::init(void)
   _can.__this = (void*)this;
   _can.handle.Instance = nullptr;
   baudrate = 0UL;
+  filtersInitialized = false;
 }
 
 CAN_TypeDef * STM32_CAN::getPeripheral()
@@ -313,6 +314,8 @@ void STM32_CAN::begin( bool retransmission ) {
   _can.handle.Init.ReceiveFifoLocked  = DISABLE;
   _can.handle.Init.TransmitFifoPriority = ENABLE;
   _can.handle.Init.Mode = mode;
+  
+  filtersInitialized = false;
 
   //try to start in case baudrate was set earlier
   setBaudRate(baudrate);
@@ -544,6 +547,8 @@ void STM32_CAN::initializeFilters()
 {
   CAN_FilterTypeDef sFilterConfig;
   if(!_can.handle.Instance) return;
+  if(filtersInitialized) return;
+  filtersInitialized = true;
 
   // We set first bank to accept all RX messages
   sFilterConfig.FilterBank = 0;

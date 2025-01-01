@@ -369,6 +369,7 @@ class STM32_CAN {
 
     Mode mode;
     uint32_t baudrate;
+    bool filtersInitialized;
 
     PinName rx;
     PinName tx;
