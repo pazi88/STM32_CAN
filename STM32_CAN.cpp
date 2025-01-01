@@ -294,15 +294,13 @@ void STM32_CAN::setBaudRate(uint32_t baud)
   // Start the CAN peripheral
   HAL_CAN_Start( &_can.handle );
 
-  // Activate CAN RX notification
+  // Activate CAN notifications
   #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
   HAL_CAN_ActivateNotification( &_can.handle, CAN_IT_RX_FIFO1_MSG_PENDING);
   #else
   HAL_CAN_ActivateNotification( &_can.handle, CAN_IT_RX_FIFO0_MSG_PENDING);
-  #endif
-
-  // Activate CAN TX notification
   HAL_CAN_ActivateNotification( &_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
+  #endif
 }
 
 bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
@@ -312,7 +310,9 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
   CAN_TxHeaderTypeDef TxHeader;
   if(!_can.handle.Instance) return false;
 
+  #if !defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB)
   __HAL_CAN_DISABLE_IT(&_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
+  #endif
 
   if (CAN_tx_msg.flags.extended == 1) // Extended ID when CAN_tx_msg.flags.extended is 1
   {
@@ -350,7 +350,10 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
     }
     else { ret = false; }
   }
+
+  #if !defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB)
   __HAL_CAN_ENABLE_IT(&_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
+  #endif
   return ret;
 }
 
