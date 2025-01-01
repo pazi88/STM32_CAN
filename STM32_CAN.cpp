@@ -218,6 +218,24 @@ CAN_TypeDef * STM32_CAN::getPeripheral()
     return NP;
   }
 
+  #ifdef STM32F1xx
+  /** AF remapping on the F1 platform only possible in pairs
+   *  Verify that both pins use the same remapping
+   *  Only enforced if both pins are used, in Rx only Tx pin is not set to AF*/
+  if(canPort_rx != NP && canPort_tx != NP)
+  {
+    uint32_t rx_func = pinmap_function(rx, PinMap_CAN_RD);
+    uint32_t tx_func = pinmap_function(tx, PinMap_CAN_TD);
+    uint32_t rx_afnum = STM_PIN_AFNUM(rx_func);
+    uint32_t tx_afnum = STM_PIN_AFNUM(tx_func);
+    if(rx_afnum != tx_afnum)
+    {
+      //ERROR
+      return NP;
+    }
+  }
+  #endif
+
   //clear tx pin in case it was set but does not match a peripheral
   if(canPort_tx == NP)
     tx = NC;
