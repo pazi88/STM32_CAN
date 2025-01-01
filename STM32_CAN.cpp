@@ -193,7 +193,10 @@ void STM32_CAN::begin( bool retransmission ) {
   initializeBuffers();
   
   pin_function(rx, pinmap_function(rx, PinMap_CAN_RD));
-  pin_function(tx, pinmap_function(tx, PinMap_CAN_TD));
+  if(tx != NC)
+  {
+    pin_function(tx, pinmap_function(tx, PinMap_CAN_TD));
+  }
 
   // Configure CAN
   if (_can.handle.Instance == CAN1)
