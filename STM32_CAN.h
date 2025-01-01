@@ -366,6 +366,7 @@ class STM32_CAN {
     bool     _canIsActive = false;
 
     Mode mode;
+    uint32_t baudrate;
 
     PinName rx;
     PinName tx;

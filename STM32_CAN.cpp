@@ -184,6 +184,7 @@ void STM32_CAN::init(void)
 {
   _can.__this = (void*)this;
   _can.handle.Instance = nullptr;
+  baudrate = 0UL;
 }
 
 CAN_TypeDef * STM32_CAN::getPeripheral()
@@ -312,10 +313,15 @@ void STM32_CAN::begin( bool retransmission ) {
   _can.handle.Init.ReceiveFifoLocked  = DISABLE;
   _can.handle.Init.TransmitFifoPriority = ENABLE;
   _can.handle.Init.Mode = mode;
+
+  //try to start in case baudrate was set earlier
+  setBaudRate(baudrate);
 }
 
 void STM32_CAN::setBaudRate(uint32_t baud)
 {
+  baudrate = baud;
+
   if(!hasPeripheral())
   {
     return;
