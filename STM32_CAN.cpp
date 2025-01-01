@@ -310,6 +310,7 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
   bool ret = true;
   uint32_t TxMailbox;
   CAN_TxHeaderTypeDef TxHeader;
+  if(!_can.handle.Instance) return false;
 
   __HAL_CAN_DISABLE_IT(&_can.handle, CAN_IT_TX_MAILBOX_EMPTY);
 
@@ -356,6 +357,8 @@ bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
 bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
 {
   bool ret;
+  if(!_can.handle.Instance) return false;
+
   #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
   __HAL_CAN_DISABLE_IT(&_can.handle, CAN_IT_RX_FIFO1_MSG_PENDING);
   #else
@@ -375,6 +378,7 @@ bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
 bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE std_ext, uint32_t filter_mode, uint32_t filter_scale, uint32_t fifo)
 {
   CAN_FilterTypeDef sFilterConfig;
+  if(!_can.handle.Instance) return false;
 
   sFilterConfig.FilterBank = bank_num;
   sFilterConfig.FilterMode = filter_mode;
@@ -421,6 +425,8 @@ bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, I
 void STM32_CAN::setMBFilter(CAN_BANK bank_num, CAN_FLTEN input)
 {
   CAN_FilterTypeDef sFilterConfig;
+  if(!_can.handle.Instance) return;
+
   sFilterConfig.FilterBank = uint8_t(bank_num);
   if (input == ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
   else { sFilterConfig.FilterActivation = DISABLE; }
@@ -433,6 +439,8 @@ void STM32_CAN::setMBFilter(CAN_FLTEN input)
   CAN_FilterTypeDef sFilterConfig;
   uint8_t max_bank_num = 27;
   uint8_t min_bank_num = 0;
+  if(!_can.handle.Instance) return;
+  
   #ifdef CAN2
   if (_can.handle.Instance == CAN1){ max_bank_num = 13;}
   else if (_can.handle.Instance == CAN2){ min_bank_num = 14;}
@@ -468,6 +476,8 @@ bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE s
 void STM32_CAN::initializeFilters()
 {
   CAN_FilterTypeDef sFilterConfig;
+  if(!_can.handle.Instance) return;
+  
   // We set first bank to accept all RX messages
   sFilterConfig.FilterBank = 0;
   sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
