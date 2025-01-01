@@ -825,8 +825,12 @@ void STM32_CAN::enableMBInterrupts()
     #ifdef CAN1_IRQn_AIO
     HAL_NVIC_EnableIRQ(CAN1_IRQn_AIO);
     #else
+    #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+    HAL_NVIC_EnableIRQ(CAN1_RX1_IRQn);
+    #else
     HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
     HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
+    #endif
     #endif /** else defined(CAN1_IRQn_AIO) */
   }
 #ifdef CAN2
@@ -858,8 +862,12 @@ void STM32_CAN::disableMBInterrupts()
       HAL_NVIC_DisableIRQ(CAN1_IRQn_AIO);
     }
     #else
+    #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+    HAL_NVIC_DisableIRQ(CAN1_RX1_IRQn);
+    #else
     HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
     HAL_NVIC_DisableIRQ(CAN1_RX0_IRQn);
+    #endif
     #endif /** else defined(CAN1_IRQn_AIO) */
   }
 #ifdef CAN2
