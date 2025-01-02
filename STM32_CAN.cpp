@@ -698,6 +698,10 @@ bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint3
 
   #ifdef CAN2
   sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
+  if(_can.handle.Instance == CAN2)
+  {
+    sFilterConfig.FilterBank += STM32_CAN_CAN2_FILTER_OFFSET;
+  }
   #endif
   // Enable filter
   if (HAL_CAN_ConfigFilter( &_can.handle, &sFilterConfig ) != HAL_OK)
