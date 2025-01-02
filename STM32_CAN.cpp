@@ -11,6 +11,10 @@
 extern CEC_HandleTypeDef * phcec;
 #endif
 
+#define STM32_CAN_SINGLE_CAN_FILTER_COUNT 14
+#define STM32_CAN_DUAL_CAN_FILTER_COUNT 28
+#define STM32_CAN_CAN2_FILTER_OFFSET 14
+
 //Max value, lowest priority
 #define MAX_IRQ_PRIO_VALUE ((1UL << __NVIC_PRIO_BITS) - 1UL)
 
@@ -561,6 +565,9 @@ bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, I
     sFilterConfig.FilterMaskIdHigh = (uint16_t) (mask >> 13);
   }
 
+  #ifdef CAN2
+  sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
+  #endif
   // Enable filter
   if (HAL_CAN_ConfigFilter( &_can.handle, &sFilterConfig ) != HAL_OK)
   {
@@ -578,6 +585,13 @@ void STM32_CAN::setMBFilter(CAN_BANK bank_num, CAN_FLTEN input)
   if(!_can.handle.Instance) return;
 
   sFilterConfig.FilterBank = uint8_t(bank_num);
+  #ifdef CAN2
+  sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
+  if (_can.handle.Instance == CAN2)
+  {
+    sFilterConfig.FilterBank += STM32_CAN_CAN2_FILTER_OFFSET;
+  }
+  #endif
   if (input == ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
   else { sFilterConfig.FilterActivation = DISABLE; }
 
@@ -587,13 +601,21 @@ void STM32_CAN::setMBFilter(CAN_BANK bank_num, CAN_FLTEN input)
 void STM32_CAN::setMBFilter(CAN_FLTEN input)
 {
   CAN_FilterTypeDef sFilterConfig;
-  uint8_t max_bank_num = 27;
+  uint8_t max_bank_num = STM32_CAN_SINGLE_CAN_FILTER_COUNT-1;
   uint8_t min_bank_num = 0;
   if(!_can.handle.Instance) return;
   
   #ifdef CAN2
-  if (_can.handle.Instance == CAN1){ max_bank_num = 13;}
-  else if (_can.handle.Instance == CAN2){ min_bank_num = 14;}
+  sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
+  if (_can.handle.Instance == CAN1)
+  { 
+    max_bank_num = max(STM32_CAN_CAN2_FILTER_OFFSET-1, 0);
+  }
+  else if (_can.handle.Instance == CAN2)
+  {
+    min_bank_num = STM32_CAN_CAN2_FILTER_OFFSET;
+    max_bank_num = STM32_CAN_DUAL_CAN_FILTER_COUNT-1;
+  }
   #endif
   for (uint8_t bank_num = min_bank_num ; bank_num <= max_bank_num ; bank_num++)
   {
@@ -646,13 +668,10 @@ void STM32_CAN::initializeFilters()
   sFilterConfig.FilterActivation = ENABLE;
   #ifdef CAN2
   // Filter banks from 14 to 27 are for Can2, so first for Can2 is bank 14. This is not relevant for devices with only one CAN
-  if (_can.handle.Instance == CAN1)
-  {
-  sFilterConfig.SlaveStartFilterBank = 14;
-  }
+  sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
   if (_can.handle.Instance == CAN2)
   {
-    sFilterConfig.FilterBank = 14;
+    sFilterConfig.FilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
   }
   #endif
 
