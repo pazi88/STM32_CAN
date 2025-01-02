@@ -208,6 +208,11 @@ void STM32_CAN::init(void)
   baudrate = 0UL;
   filtersInitialized = false;
 
+  _can.handle.Init.TimeTriggeredMode = DISABLE;
+  _can.handle.Init.AutoBusOff = DISABLE;
+  _can.handle.Init.AutoWakeUp = DISABLE;
+  _can.handle.Init.ReceiveFifoLocked  = DISABLE;
+  _can.handle.Init.TransmitFifoPriority = ENABLE;
   _can.handle.Init.Mode = Mode::NORMAL;
 }
 
@@ -347,13 +352,8 @@ void STM32_CAN::begin( bool retransmission ) {
   }
 #endif
 
-  _can.handle.Init.TimeTriggeredMode = DISABLE;
-  _can.handle.Init.AutoBusOff = DISABLE;
-  _can.handle.Init.AutoWakeUp = DISABLE;
   if (retransmission){ _can.handle.Init.AutoRetransmission  = ENABLE; }
   else { _can.handle.Init.AutoRetransmission  = DISABLE; }
-  _can.handle.Init.ReceiveFifoLocked  = DISABLE;
-  _can.handle.Init.TransmitFifoPriority = ENABLE;
   
   filtersInitialized = false;
 
