@@ -716,48 +716,14 @@ bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint3
 
 void STM32_CAN::setMBFilter(CAN_BANK bank_num, CAN_FLTEN input)
 {
-  CAN_FilterTypeDef sFilterConfig;
-  if(!_can.handle.Instance) return;
-
-  sFilterConfig.FilterBank = uint8_t(bank_num);
-  #ifdef CAN2
-  sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
-  if (_can.handle.Instance == CAN2)
-  {
-    sFilterConfig.FilterBank += STM32_CAN_CAN2_FILTER_OFFSET;
-  }
-  #endif
-  if (input == ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
-  else { sFilterConfig.FilterActivation = DISABLE; }
-
-  HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
+  setFilter(bank_num, (input == ACCEPT_ALL));
 }
 
 void STM32_CAN::setMBFilter(CAN_FLTEN input)
 {
-  CAN_FilterTypeDef sFilterConfig;
-  uint8_t max_bank_num = STM32_CAN_SINGLE_CAN_FILTER_COUNT-1;
-  uint8_t min_bank_num = 0;
-  if(!_can.handle.Instance) return;
-  
-  #ifdef CAN2
-  sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
-  if (_can.handle.Instance == CAN1)
-  { 
-    max_bank_num = max(STM32_CAN_CAN2_FILTER_OFFSET-1, 0);
-  }
-  else if (_can.handle.Instance == CAN2)
+  for (uint8_t bank_num = 0 ; bank_num < STM32_CAN_SINGLE_CAN_FILTER_COUNT ; bank_num++)
   {
-    min_bank_num = STM32_CAN_CAN2_FILTER_OFFSET;
-    max_bank_num = STM32_CAN_DUAL_CAN_FILTER_COUNT-1;
-  }
-  #endif
-  for (uint8_t bank_num = min_bank_num ; bank_num <= max_bank_num ; bank_num++)
-  {
-    sFilterConfig.FilterBank = bank_num;
-    if (input == ACCEPT_ALL) { sFilterConfig.FilterActivation = ENABLE; }
-    else { sFilterConfig.FilterActivation = DISABLE; }
-    HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
+    setFilter(bank_num, (input == ACCEPT_ALL));
   }
 }
 
