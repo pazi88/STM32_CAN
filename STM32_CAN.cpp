@@ -676,6 +676,28 @@ void STM32_CAN::initializeFilters()
   #endif
 
   HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
+
+  /** turn off all other filters that might sill be setup from before */
+  sFilterConfig.FilterActivation = DISABLE;
+  uint8_t filter_count = STM32_CAN_SINGLE_CAN_FILTER_COUNT;
+  uint8_t filter_start = 1;
+  #ifdef CAN2
+  /** In dual CAN devices filter banks are shared and setup to equal amounts */
+  if (_can.handle.Instance == CAN1)
+  { 
+    filter_count = STM32_CAN_CAN2_FILTER_OFFSET;
+  }
+  else if (_can.handle.Instance == CAN2)
+  {
+    filter_start += STM32_CAN_CAN2_FILTER_OFFSET;
+    filter_count = STM32_CAN_DUAL_CAN_FILTER_COUNT;
+  }
+  #endif
+  for (uint8_t bank_num = filter_start ; bank_num < filter_count ; bank_num++)
+  {
+    sFilterConfig.FilterBank = bank_num;
+    HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
+  }
 }
 
 void STM32_CAN::initializeBuffers()
