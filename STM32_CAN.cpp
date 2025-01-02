@@ -744,55 +744,19 @@ bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE s
   return setFilterDualID(uint8_t(bank_num), id1, id2, std_ext, std_ext);
 }
 
-// TBD, do this using "setFilter" -function
 void STM32_CAN::initializeFilters()
 {
-  CAN_FilterTypeDef sFilterConfig;
-  if(!_can.handle.Instance) return;
   if(filtersInitialized) return;
   filtersInitialized = true;
 
-  // We set first bank to accept all RX messages
-  sFilterConfig.FilterBank = 0;
-  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
-  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-  sFilterConfig.FilterIdHigh = 0x0000;
-  sFilterConfig.FilterIdLow = 0x0000;
-  sFilterConfig.FilterMaskIdHigh = 0x0000;
-  sFilterConfig.FilterMaskIdLow = 0x0000;
-  sFilterConfig.FilterFIFOAssignment = CAN_FILTER_DEFAULT_FIFO;
-  sFilterConfig.FilterActivation = ENABLE;
-  #ifdef CAN2
-  // Filter banks from 14 to 27 are for Can2, so first for Can2 is bank 14. This is not relevant for devices with only one CAN
-  sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
-  if (_can.handle.Instance == CAN2)
-  {
-    sFilterConfig.FilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
-  }
-  #endif
-
-  HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
+  /** Let everything in by default */
+  setFilterRaw(0, 0UL, 0UL, CAN_FILTERMODE_IDMASK, CAN_FILTERSCALE_32BIT,
+    FilterAction::CAN_FILTER_DEFAULT_ACTION, true);
 
   /** turn off all other filters that might sill be setup from before */
-  sFilterConfig.FilterActivation = DISABLE;
-  uint8_t filter_count = STM32_CAN_SINGLE_CAN_FILTER_COUNT;
-  uint8_t filter_start = 1;
-  #ifdef CAN2
-  /** In dual CAN devices filter banks are shared and setup to equal amounts */
-  if (_can.handle.Instance == CAN1)
-  { 
-    filter_count = STM32_CAN_CAN2_FILTER_OFFSET;
-  }
-  else if (_can.handle.Instance == CAN2)
+  for (uint8_t bank_num = 1 ; bank_num < STM32_CAN_SINGLE_CAN_FILTER_COUNT ; bank_num++)
   {
-    filter_start += STM32_CAN_CAN2_FILTER_OFFSET;
-    filter_count = STM32_CAN_DUAL_CAN_FILTER_COUNT;
-  }
-  #endif
-  for (uint8_t bank_num = filter_start ; bank_num < filter_count ; bank_num++)
-  {
-    sFilterConfig.FilterBank = bank_num;
-    HAL_CAN_ConfigFilter(&_can.handle, &sFilterConfig);
+    setFilter(bank_num, false);
   }
 }
 
