@@ -1201,30 +1201,34 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *CanHandle)
 
   // move the message from RX FIFO0 to RX ringbuffer
   #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
-  if (HAL_CAN_GetRxMessage( CanHandle, CAN_RX_FIFO1, &RxHeader, rxmsg.buf ) == HAL_OK)
+  const uint32_t fifo = CAN_RX_FIFO1;
   #else
-  if (HAL_CAN_GetRxMessage( CanHandle, CAN_RX_FIFO0, &RxHeader, rxmsg.buf ) == HAL_OK)
+  const uint32_t fifo = CAN_RX_FIFO0;
   #endif
+  do
   {
-    if ( RxHeader.IDE == CAN_ID_STD )
+    if (HAL_CAN_GetRxMessage( CanHandle, fifo, &RxHeader, rxmsg.buf ) == HAL_OK)
     {
-      rxmsg.id = RxHeader.StdId;
-      rxmsg.flags.extended = 0;
-    }
-    else
-    {
-      rxmsg.id = RxHeader.ExtId;
-      rxmsg.flags.extended = 1;
-    }
+      if ( RxHeader.IDE == CAN_ID_STD )
+      {
+        rxmsg.id = RxHeader.StdId;
+        rxmsg.flags.extended = 0;
+      }
+      else
+      {
+        rxmsg.id = RxHeader.ExtId;
+        rxmsg.flags.extended = 1;
+      }
 
-    rxmsg.flags.remote = RxHeader.RTR;
-    rxmsg.mb           = RxHeader.FilterMatchIndex;
-    rxmsg.timestamp    = RxHeader.Timestamp;
-    rxmsg.len          = RxHeader.DLC;
+      rxmsg.flags.remote = RxHeader.RTR;
+      rxmsg.mb           = RxHeader.FilterMatchIndex;
+      rxmsg.timestamp    = RxHeader.Timestamp;
+      rxmsg.len          = RxHeader.DLC;
 
-    rxmsg.bus = canObj->bus;
-    _can->addToRingBuffer(_can->rxRing, rxmsg);
-  }
+      rxmsg.bus = canObj->bus;
+      _can->addToRingBuffer(_can->rxRing, rxmsg);
+    }
+  } while(HAL_CAN_GetRxFifoFillLevel(CanHandle, fifo));
   //Enable_Interrupts(state);
 }
 
