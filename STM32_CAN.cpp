@@ -533,7 +533,95 @@ bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
   return ret;
 }
 
+static uint32_t format32bitFilter(uint32_t id, IDE std_ext, bool mask)
+{
+  uint32_t id_reg;
+  if (std_ext == AUTO)
+  {
+    std_ext = (id <= 0x7FF) ? STD : EXT;
+  }
+  if (std_ext == STD)
+  {
+    id <<= 18;
+  }
+  id_reg = id << 3;
+  //set IDE bit
+  if (mask || std_ext == EXT)
+  {
+    id_reg |= (1 << 2);
+  }
+  return id_reg;
+}
+
+static uint32_t format16bitFilter(uint32_t id, IDE std_ext, bool mask)
+{
+  uint32_t id_reg;
+  if (std_ext == AUTO)
+  {
+    std_ext = (id <= 0x7FF) ? STD : EXT;
+  }
+  if (std_ext == STD)
+  {
+    id <<= 18;
+  }
+  //set STID
+  id_reg =  (id >> (18-5)) & 0xFFE0UL;
+  //set EXTI [17:15]
+  id_reg |= (id >> (18-3)) & 0x003UL;
+  //set IDE bit
+  if (mask || std_ext == EXT)
+  {
+    id_reg |= (1 << 3);
+  }
+  return id_reg;
+}
+
+bool STM32_CAN::setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, uint32_t fifo, bool enabled)
+{
+  uint32_t id_reg   = format32bitFilter(id,   std_ext, false);
+  uint32_t mask_reg = format32bitFilter(mask, std_ext, true);
+  return setFilterRaw(bank_num, id_reg, mask_reg, CAN_FILTERMODE_IDMASK, CAN_FILTERSCALE_32BIT, fifo, enabled);
+}
+
+bool STM32_CAN::setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, uint32_t fifo, bool enabled)
+{
+  uint32_t id   = format32bitFilter(id1, std_ext1, false);
+  uint32_t mask = format32bitFilter(id2, std_ext2, false);
+  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDLIST, CAN_FILTERSCALE_32BIT, fifo, enabled);
+}
+
+bool STM32_CAN::setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, uint32_t fifo, bool enabled)
+{
+  uint32_t id   = (uint32_t)format16bitFilter(id1, std_ext1, false) | (((uint32_t)format16bitFilter(mask1, std_ext1, true)) << 16);
+  uint32_t mask = (uint32_t)format16bitFilter(id2, std_ext2, false) | (((uint32_t)format16bitFilter(mask2, std_ext2, true)) << 16);
+  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDMASK, CAN_FILTERSCALE_16BIT, fifo, enabled);
+}
+
+bool STM32_CAN::setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, uint32_t fifo, bool enabled)
+{
+  uint32_t id   = (uint32_t)format16bitFilter(id1, std_ext1, false) | (((uint32_t)format16bitFilter(id2, std_ext2, false)) << 16);
+  uint32_t mask = (uint32_t)format16bitFilter(id3, std_ext3, false) | (((uint32_t)format16bitFilter(id4, std_ext4, false)) << 16);
+  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDLIST, CAN_FILTERSCALE_16BIT, fifo, enabled);
+}
+
 bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE std_ext, uint32_t filter_mode, uint32_t filter_scale, uint32_t fifo)
+{
+  /** NOTE: legacy, this function only implemented 32 bit scaling mode in mask mode, other modes will be broken*/
+  if(filter_scale != CAN_FILTERSCALE_32BIT)
+  {
+    core_debug("WARNING: legacy function only implements 32 bit filter scale. Filter will be broken!\n");
+  }
+  if(filter_scale != CAN_FILTERMODE_IDMASK)
+  {
+    core_debug("WARNING: legacy function only implements ID Mask mode. Filter will be broken!\n");
+  }
+  /** re-implement broken implementation for legacy behaviour */
+  uint32_t id_reg   = format32bitFilter(filter_id, std_ext, false);
+  uint32_t mask_reg = format32bitFilter(mask,      std_ext, true);
+  return setFilterRaw(bank_num, id_reg, mask_reg, filter_mode, filter_scale, fifo);
+}
+
+bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, uint32_t fifo, bool enabled)
 {
   CAN_FilterTypeDef sFilterConfig;
   if(!_can.handle.Instance) return false;
@@ -548,26 +636,12 @@ bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, I
   }
   #endif
   sFilterConfig.FilterFIFOAssignment = fifo;
-  sFilterConfig.FilterActivation = ENABLE;
+  sFilterConfig.FilterActivation = enabled ? ENABLE : DISABLE;
 
-  if (std_ext == STD || (std_ext == AUTO && filter_id <= 0x7FF))
-  {
-    // Standard ID can be only 11 bits long
-    sFilterConfig.FilterIdHigh = (uint16_t) (filter_id << 5);
-    sFilterConfig.FilterIdLow = 0;
-    sFilterConfig.FilterMaskIdHigh = (uint16_t) (mask << 5);
-    sFilterConfig.FilterMaskIdLow = CAN_ID_EXT;
-  }
-  else
-  {
-    // Extended ID
-    sFilterConfig.FilterIdLow = (uint16_t) (filter_id << 3);
-    sFilterConfig.FilterIdLow |= CAN_ID_EXT;
-    sFilterConfig.FilterIdHigh = (uint16_t) (filter_id >> 13);
-    sFilterConfig.FilterMaskIdLow = (uint16_t) (mask << 3);
-    sFilterConfig.FilterMaskIdLow |= CAN_ID_EXT;
-    sFilterConfig.FilterMaskIdHigh = (uint16_t) (mask >> 13);
-  }
+  sFilterConfig.FilterIdLow      = id   & 0xFFFFUL;
+  sFilterConfig.FilterIdHigh     = id   >> 16;
+  sFilterConfig.FilterMaskIdLow  = mask & 0xFFFFUL;
+  sFilterConfig.FilterMaskIdHigh = mask >> 16;
 
   #ifdef CAN2
   sFilterConfig.SlaveStartFilterBank = STM32_CAN_CAN2_FILTER_OFFSET;
@@ -633,19 +707,18 @@ void STM32_CAN::setMBFilter(CAN_FLTEN input)
 bool STM32_CAN::setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask, IDE std_ext)
 {
   // just convert the MB number enum to bank number.
-  return setFilter(uint8_t(bank_num), filter_id, mask, std_ext);
+  return setFilterSingleMask(uint8_t(bank_num), filter_id, mask, std_ext);
 }
 
 bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, IDE std_ext)
 {
   // by setting the mask to 0x1FFFFFFF we only filter the ID set as Filter ID.
-  return setFilter(uint8_t(bank_num), id1, 0x1FFFFFFF, std_ext);
+  return setFilterSingleMask(uint8_t(bank_num), id1, 0x1FFFFFFF, std_ext);
 }
 
 bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE std_ext)
 {
-  // if we set the filter mode as IDLIST, the mask becomes filter ID too. So we can filter two totally independent IDs in same bank.
-  return setFilter(uint8_t(bank_num), id1, id2, AUTO, CAN_FILTERMODE_IDLIST, std_ext);
+  return setFilterDualID(uint8_t(bank_num), id1, id2, std_ext, std_ext);
 }
 
 // TBD, do this using "setFilter" -function
