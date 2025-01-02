@@ -576,6 +576,50 @@ static uint32_t format16bitFilter(uint32_t id, IDE std_ext, bool mask)
   return id_reg;
 }
 
+bool STM32_CAN::setFilter(uint8_t bank_num, bool enabled, FilterAction action)
+{
+  CAN_TypeDef *can_ip = _can.handle.Instance;
+  /** CAN2 shares filter banks with CAN1
+   * Driver allocates equal amount to each
+   * Filter Banks located at CAN1 base address
+  */
+  #ifdef CAN2
+  if(_can.handle.Instance == CAN2)
+  {
+    can_ip = CAN1;
+    bank_num += STM32_CAN_CAN2_FILTER_OFFSET;
+  }
+  #endif
+
+  uint32_t filternbrbitpos = (uint32_t)1 << (bank_num & 0x1FU);
+
+  /* Initialisation mode for the filter */
+  SET_BIT(can_ip->FMR, CAN_FMR_FINIT);
+  
+  /* Filter Deactivation */
+  CLEAR_BIT(can_ip->FA1R, filternbrbitpos);
+
+  /* Filter FIFO assignment */
+  switch (action)
+  {
+    case FilterAction::STORE_FIFO0:
+      CLEAR_BIT(can_ip->FFA1R, filternbrbitpos);
+      break;
+    case FilterAction::STORE_FIFO1:
+      SET_BIT(can_ip->FFA1R, filternbrbitpos);
+      break;
+  }
+
+  /* Filter activation */
+  if(enabled)
+  {
+    SET_BIT(can_ip->FA1R, filternbrbitpos);
+  }
+  /* Leave the initialisation mode for the filter */
+  CLEAR_BIT(can_ip->FMR, CAN_FMR_FINIT);
+  return true;
+}
+
 bool STM32_CAN::setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action, bool enabled)
 {
   uint32_t id_reg   = format32bitFilter(id,   std_ext, false);

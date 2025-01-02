@@ -266,6 +266,8 @@ class STM32_CAN {
       STORE_FIFO0,
       STORE_FIFO1
     };
+    /** set filter state and action, keeps filter rules intact */
+    bool setFilter(uint8_t bank_num, bool state, FilterAction action = STORE_FIFO0);
     bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action = STORE_FIFO0, bool enabled = true);
     bool setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, FilterAction action = STORE_FIFO0, bool enabled = true);
     bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FilterAction action = STORE_FIFO0, bool enabled = true);
