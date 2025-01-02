@@ -117,7 +117,7 @@ bool STM32_CAN::hasPeripheral()
 
 STM32_CAN::STM32_CAN(uint32_t rx, uint32_t tx, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize)
   : sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
-    mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
+    preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
 {
   this->rx = digitalPinToPinName(rx);
   this->tx = digitalPinToPinName(tx);
@@ -126,14 +126,14 @@ STM32_CAN::STM32_CAN(uint32_t rx, uint32_t tx, RXQUEUE_TABLE rxSize, TXQUEUE_TAB
 
 STM32_CAN::STM32_CAN(PinName rx, PinName tx, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize)
   : rx(rx), tx(tx), sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
-    mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
+    preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
 {
   init();
 }
 
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize )
   : sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
-    mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
+    preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
 {
   //get first matching pins from map
   rx = pinmap_find_pin(canPort, PinMap_CAN_RD);
@@ -144,7 +144,7 @@ STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE 
 //lagacy pin config for compatibility
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize )
   : rx(NC), tx(NC), sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
-    mode(Mode::NORMAL), preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
+    preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
 {
   if (canPort == CAN1)
   {
@@ -207,6 +207,8 @@ void STM32_CAN::init(void)
   _can.handle.Instance = nullptr;
   baudrate = 0UL;
   filtersInitialized = false;
+
+  _can.handle.Init.Mode = Mode::NORMAL;
 }
 
 CAN_TypeDef * STM32_CAN::getPeripheral()
@@ -352,7 +354,6 @@ void STM32_CAN::begin( bool retransmission ) {
   else { _can.handle.Init.AutoRetransmission  = DISABLE; }
   _can.handle.Init.ReceiveFifoLocked  = DISABLE;
   _can.handle.Init.TransmitFifoPriority = ENABLE;
-  _can.handle.Init.Mode = mode;
   
   filtersInitialized = false;
 
@@ -1068,7 +1069,6 @@ void STM32_CAN::disableMBInterrupts()
 
 void STM32_CAN::setMode(Mode mode)
 {
-  this->mode = mode;
   _can.handle.Init.Mode = mode;
 }
 

@@ -370,7 +370,6 @@ class STM32_CAN {
 
     bool     _canIsActive = false;
 
-    Mode mode;
     uint32_t baudrate;
     bool filtersInitialized;
 
