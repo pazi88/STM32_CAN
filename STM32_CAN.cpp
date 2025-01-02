@@ -760,11 +760,7 @@ void STM32_CAN::initializeFilters()
   sFilterConfig.FilterIdLow = 0x0000;
   sFilterConfig.FilterMaskIdHigh = 0x0000;
   sFilterConfig.FilterMaskIdLow = 0x0000;
-  #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
-  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO1;
-  #else
-  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
-  #endif
+  sFilterConfig.FilterFIFOAssignment = CAN_FILTER_DEFAULT_FIFO;
   sFilterConfig.FilterActivation = ENABLE;
   #ifdef CAN2
   // Filter banks from 14 to 27 are for Can2, so first for Can2 is bank 14. This is not relevant for devices with only one CAN

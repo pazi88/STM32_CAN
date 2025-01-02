@@ -135,6 +135,11 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
 #elif defined(USBCON) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
 #warning "CAN IRQ Handler is used by USBDevice driver, call STM32_CAN_Poll_IRQ_Handler() frequently to handle CAN events."
 extern "C" void STM32_CAN_Poll_IRQ_Handler(void);
+#define CAN_FILTER_DEFAULT_FIFO   CAN_FILTER_FIFO1
+#define CAN_FILTER_DEFAULT_ACTION STORE_FIFO1
+#else
+#define CAN_FILTER_DEFAULT_FIFO   CAN_FILTER_FIFO0
+#define CAN_FILTER_DEFAULT_ACTION STORE_FIFO0
 #endif
 
 
@@ -267,14 +272,14 @@ class STM32_CAN {
       STORE_FIFO1
     };
     /** set filter state and action, keeps filter rules intact */
-    bool setFilter(uint8_t bank_num, bool state, FilterAction action = STORE_FIFO0);
-    bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action = STORE_FIFO0, bool enabled = true);
-    bool setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, FilterAction action = STORE_FIFO0, bool enabled = true);
-    bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FilterAction action = STORE_FIFO0, bool enabled = true);
-    bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FilterAction action = STORE_FIFO0, bool enabled = true);
-    bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FilterAction action = STORE_FIFO0, bool enabled = true);
+    bool setFilter(uint8_t bank_num, bool state, FilterAction action = CAN_FILTER_DEFAULT_ACTION);
+    bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
     // Legacy, broken! Only works correctly for 32 bit mask mode
-    bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_FIFO0);
+    bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_DEFAULT_FIFO);
     // Teensy FlexCAN style "set filter" -functions
     bool setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO);
     void setMBFilter(CAN_FLTEN input); /* enable/disable traffic for all MBs (for individual masking) */
