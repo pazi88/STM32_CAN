@@ -994,37 +994,8 @@ bool STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
 
 uint32_t STM32_CAN::getAPB1Clock()
 {
-  RCC_ClkInitTypeDef clkInit;
-  uint32_t flashLatency;
-  HAL_RCC_GetClockConfig(&clkInit, &flashLatency);
-
-  uint32_t hclkClock = HAL_RCC_GetHCLKFreq();
-  uint8_t clockDivider = 1;
-  switch (clkInit.APB1CLKDivider)
-  {
-  case RCC_HCLK_DIV1:
-    clockDivider = 1;
-    break;
-  case RCC_HCLK_DIV2:
-    clockDivider = 2;
-    break;
-  case RCC_HCLK_DIV4:
-    clockDivider = 4;
-    break;
-  case RCC_HCLK_DIV8:
-    clockDivider = 8;
-    break;
-  case RCC_HCLK_DIV16:
-    clockDivider = 16;
-    break;
-  default:
-    // should not happen
-    break;
-  }
-
-  uint32_t apb1Clock = hclkClock / clockDivider;
-
-  return apb1Clock;
+  //APB1 is PCLK1
+  return HAL_RCC_GetPCLK1Freq();
 }
 
 void STM32_CAN::enableMBInterrupts()
