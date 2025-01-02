@@ -576,32 +576,32 @@ static uint32_t format16bitFilter(uint32_t id, IDE std_ext, bool mask)
   return id_reg;
 }
 
-bool STM32_CAN::setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, uint32_t fifo, bool enabled)
+bool STM32_CAN::setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action, bool enabled)
 {
   uint32_t id_reg   = format32bitFilter(id,   std_ext, false);
   uint32_t mask_reg = format32bitFilter(mask, std_ext, true);
-  return setFilterRaw(bank_num, id_reg, mask_reg, CAN_FILTERMODE_IDMASK, CAN_FILTERSCALE_32BIT, fifo, enabled);
+  return setFilterRaw(bank_num, id_reg, mask_reg, CAN_FILTERMODE_IDMASK, CAN_FILTERSCALE_32BIT, action, enabled);
 }
 
-bool STM32_CAN::setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, uint32_t fifo, bool enabled)
+bool STM32_CAN::setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, FilterAction action, bool enabled)
 {
   uint32_t id   = format32bitFilter(id1, std_ext1, false);
   uint32_t mask = format32bitFilter(id2, std_ext2, false);
-  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDLIST, CAN_FILTERSCALE_32BIT, fifo, enabled);
+  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDLIST, CAN_FILTERSCALE_32BIT, action, enabled);
 }
 
-bool STM32_CAN::setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, uint32_t fifo, bool enabled)
+bool STM32_CAN::setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FilterAction action, bool enabled)
 {
   uint32_t id   = (uint32_t)format16bitFilter(id1, std_ext1, false) | (((uint32_t)format16bitFilter(mask1, std_ext1, true)) << 16);
   uint32_t mask = (uint32_t)format16bitFilter(id2, std_ext2, false) | (((uint32_t)format16bitFilter(mask2, std_ext2, true)) << 16);
-  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDMASK, CAN_FILTERSCALE_16BIT, fifo, enabled);
+  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDMASK, CAN_FILTERSCALE_16BIT, action, enabled);
 }
 
-bool STM32_CAN::setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, uint32_t fifo, bool enabled)
+bool STM32_CAN::setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FilterAction action, bool enabled)
 {
   uint32_t id   = (uint32_t)format16bitFilter(id1, std_ext1, false) | (((uint32_t)format16bitFilter(id2, std_ext2, false)) << 16);
   uint32_t mask = (uint32_t)format16bitFilter(id3, std_ext3, false) | (((uint32_t)format16bitFilter(id4, std_ext4, false)) << 16);
-  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDLIST, CAN_FILTERSCALE_16BIT, fifo, enabled);
+  return setFilterRaw(bank_num, id, mask, CAN_FILTERMODE_IDLIST, CAN_FILTERSCALE_16BIT, action, enabled);
 }
 
 bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE std_ext, uint32_t filter_mode, uint32_t filter_scale, uint32_t fifo)
@@ -618,10 +618,11 @@ bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, I
   /** re-implement broken implementation for legacy behaviour */
   uint32_t id_reg   = format32bitFilter(filter_id, std_ext, false);
   uint32_t mask_reg = format32bitFilter(mask,      std_ext, true);
-  return setFilterRaw(bank_num, id_reg, mask_reg, filter_mode, filter_scale, fifo);
+  FilterAction action = (fifo==CAN_FILTER_FIFO0) ? FilterAction::STORE_FIFO0 : FilterAction::STORE_FIFO1;
+  return setFilterRaw(bank_num, id_reg, mask_reg, filter_mode, filter_scale, action);
 }
 
-bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, uint32_t fifo, bool enabled)
+bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FilterAction action, bool enabled)
 {
   CAN_FilterTypeDef sFilterConfig;
   if(!_can.handle.Instance) return false;
@@ -630,12 +631,20 @@ bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint3
   sFilterConfig.FilterMode = filter_mode;
   sFilterConfig.FilterScale = filter_scale;
   #if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
-  if(fifo == CAN_RX_FIFO0)
+  if(action == FilterAction::STORE_FIFO0)
   {
     core_debug("WARNING: RX0 IRQ is blocked by USB Driver. Events only handled by polling and RX1 events!\n");
   }
   #endif
-  sFilterConfig.FilterFIFOAssignment = fifo;
+  switch (action)
+  {
+    case FilterAction::STORE_FIFO0:
+      sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+      break;
+    case FilterAction::STORE_FIFO1:
+      sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO1;
+      break;
+  }
   sFilterConfig.FilterActivation = enabled ? ENABLE : DISABLE;
 
   sFilterConfig.FilterIdLow      = id   & 0xFFFFUL;

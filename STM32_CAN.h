@@ -262,11 +262,15 @@ class STM32_CAN {
     bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
     bool read(CAN_message_t &CAN_rx_msg);
     // Manually set STM32 filter bank parameters
-    bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, uint32_t fifo = CAN_FILTER_FIFO0, bool enabled = true);
-    bool setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, uint32_t fifo = CAN_FILTER_FIFO0, bool enabled = true);
-    bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, uint32_t fifo = CAN_FILTER_FIFO0, bool enabled = true);
-    bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, uint32_t fifo = CAN_FILTER_FIFO0, bool enabled = true);
-    bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, uint32_t fifo = CAN_FILTER_FIFO0, bool enabled = true);
+    enum FilterAction {
+      STORE_FIFO0,
+      STORE_FIFO1
+    };
+    bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action = STORE_FIFO0, bool enabled = true);
+    bool setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, FilterAction action = STORE_FIFO0, bool enabled = true);
+    bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FilterAction action = STORE_FIFO0, bool enabled = true);
+    bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FilterAction action = STORE_FIFO0, bool enabled = true);
+    bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FilterAction action = STORE_FIFO0, bool enabled = true);
     // Legacy, broken! Only works correctly for 32 bit mask mode
     bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_FIFO0);
     // Teensy FlexCAN style "set filter" -functions
