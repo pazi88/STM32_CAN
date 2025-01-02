@@ -415,7 +415,10 @@ void STM32_CAN::setBaudRate(uint32_t baud)
   }
 
   // Calculate and set baudrate
-  calculateBaudrate( &_can.handle, baud );
+  if(!calculateBaudrate( &_can.handle, baud ))
+  {
+    return;
+  }
 
   // (re)-start
   stop();
@@ -940,7 +943,7 @@ bool STM32_CAN::lookupBaudrate(CAN_HandleTypeDef *CanHandle, int baud, const T(&
   return false;
 }
 
-void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
+bool STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
 {
   uint8_t bs1;
   uint8_t bs2;
@@ -949,9 +952,9 @@ void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
   const uint32_t frequency = getAPB1Clock();
 
   if (frequency == 48000000) {
-    if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_48M)) return;
+    if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_48M)) return true;
   } else if (frequency == 45000000) {
-    if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_45M)) return;
+    if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_45M)) return true;
   }
 
   /* this loop seeks a precise baudrate match, with the sample point positioned
@@ -980,12 +983,13 @@ void STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
         if (baud_cur != baud) continue;
 
         setBaudRateValues(CanHandle, prescaler, bs1, bs2, 4);
-        return;
+        return true;
       }
     }
   }
 
   /* uhoh, failed to calculate an acceptable baud rate... */
+  return false;
 }
 
 uint32_t STM32_CAN::getAPB1Clock()
