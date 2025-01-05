@@ -416,7 +416,7 @@ void STM32_CAN::setBaudRate(uint32_t baud)
   }
 
   // Calculate and set baudrate
-  if(!calculateBaudrate( &_can.handle, baud ))
+  if(!calculateBaudrate( baud ))
   {
     return;
   }
@@ -858,8 +858,8 @@ uint32_t STM32_CAN::ringBufferCount(RingbufferTypeDef &ring)
     return((uint32_t)entries);
 }
 
-void STM32_CAN::setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescaler, uint8_t timeseg1,
-                                                                uint8_t timeseg2, uint8_t sjw)
+void STM32_CAN::setBaudRateValues(uint16_t prescaler, uint8_t timeseg1,
+                                  uint8_t timeseg2, uint8_t sjw)
 {
   uint32_t _SyncJumpWidth = 0;
   uint32_t _TimeSeg1 = 0;
@@ -979,28 +979,28 @@ void STM32_CAN::setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescal
   }
   _Prescaler = prescaler;
 
-  CanHandle->Init.SyncJumpWidth = _SyncJumpWidth;
-  CanHandle->Init.TimeSeg1 = _TimeSeg1;
-  CanHandle->Init.TimeSeg2 = _TimeSeg2;
-  CanHandle->Init.Prescaler = _Prescaler;
+  _can.handle.Init.SyncJumpWidth = _SyncJumpWidth;
+  _can.handle.Init.TimeSeg1 = _TimeSeg1;
+  _can.handle.Init.TimeSeg2 = _TimeSeg2;
+  _can.handle.Init.Prescaler = _Prescaler;
 }
 
 template <typename T, size_t N>
-bool STM32_CAN::lookupBaudrate(CAN_HandleTypeDef *CanHandle, int baud, const T(&table)[N]) {
+bool STM32_CAN::lookupBaudrate(int baud, const T(&table)[N]) {
   for (size_t i = 0; i < N; i++) {
     if (baud != (int)table[i].baudrate) {
       continue;
     }
 
     /* for the best chance at interoperability, use the widest SJW possible */
-    setBaudRateValues(CanHandle, table[i].prescaler, table[i].timeseg1, table[i].timeseg2, 4);
+    setBaudRateValues(table[i].prescaler, table[i].timeseg1, table[i].timeseg2, 4);
     return true;
   }
 
   return false;
 }
 
-bool STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
+bool STM32_CAN::calculateBaudrate(int baud)
 {
   uint8_t bs1;
   uint8_t bs2;
@@ -1009,9 +1009,9 @@ bool STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
   const uint32_t frequency = getCanPeripheralClock();
 
   if (frequency == 48000000) {
-    if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_48M)) return true;
+    if (lookupBaudrate(baud, BAUD_RATE_TABLE_48M)) return true;
   } else if (frequency == 45000000) {
-    if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_45M)) return true;
+    if (lookupBaudrate(baud, BAUD_RATE_TABLE_45M)) return true;
   }
 
   /* this loop seeks a precise baudrate match, with the sample point positioned
@@ -1039,7 +1039,7 @@ bool STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
 
         if (baud_cur != baud) continue;
 
-        setBaudRateValues(CanHandle, prescaler, bs1, bs2, 4);
+        setBaudRateValues(prescaler, bs1, bs2, 4);
         return true;
       }
     }
