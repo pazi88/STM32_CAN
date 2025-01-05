@@ -696,7 +696,7 @@ bool STM32_CAN::setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, I
   uint32_t id_reg   = format32bitFilter(filter_id, std_ext, false);
   uint32_t mask_reg = format32bitFilter(mask,      std_ext, true);
   FilterAction action = (fifo==CAN_FILTER_FIFO0) ? FilterAction::STORE_FIFO0 : FilterAction::STORE_FIFO1;
-  return setFilterRaw(bank_num, id_reg, mask_reg, filter_mode, filter_scale, action);
+  return !setFilterRaw(bank_num, id_reg, mask_reg, filter_mode, filter_scale, action);
 }
 
 bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FilterAction action, bool enabled)
@@ -737,14 +737,7 @@ bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint3
   }
   #endif
   // Enable filter
-  if (HAL_CAN_ConfigFilter( &_can.handle, &sFilterConfig ) != HAL_OK)
-  {
-    return 1;
-  }
-  else
-  {
-    return 0;
-  }
+  return (HAL_CAN_ConfigFilter( &_can.handle, &sFilterConfig ) == HAL_OK);
 }
 
 
@@ -769,18 +762,18 @@ void STM32_CAN::setMBFilter(CAN_FLTEN input)
 bool STM32_CAN::setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask, IDE std_ext)
 {
   // just convert the MB number enum to bank number.
-  return setFilterSingleMask(uint8_t(bank_num), filter_id, mask, std_ext);
+  return !setFilterSingleMask(uint8_t(bank_num), filter_id, mask, std_ext);
 }
 
 bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, IDE std_ext)
 {
   // by setting the mask to 0x1FFFFFFF we only filter the ID set as Filter ID.
-  return setFilterSingleMask(uint8_t(bank_num), id1, 0x1FFFFFFF, std_ext);
+  return !setFilterSingleMask(uint8_t(bank_num), id1, 0x1FFFFFFF, std_ext);
 }
 
 bool STM32_CAN::setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE std_ext)
 {
-  return setFilterDualID(uint8_t(bank_num), id1, id2, std_ext, std_ext);
+  return !setFilterDualID(uint8_t(bank_num), id1, id2, std_ext, std_ext);
 }
 
 void STM32_CAN::initializeFilters()

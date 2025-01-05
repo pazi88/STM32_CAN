@@ -301,7 +301,10 @@ class STM32_CAN {
     bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
     bool read(CAN_message_t &CAN_rx_msg);
 
-    // Manually set STM32 filter bank parameters
+    /** 
+     * Manually set STM32 filter bank parameters
+     * These return true on success
+     */
     /** set filter state and action, keeps filter rules intact */
     bool setFilter(uint8_t bank_num, bool state, FilterAction action = CAN_FILTER_DEFAULT_ACTION);
     bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
@@ -309,12 +312,15 @@ class STM32_CAN {
     bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
     bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
     bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
-    // Legacy, broken! Only works correctly for 32 bit mask mode
+    /** Legacy, broken! Only works correctly for 32 bit mask mode 
+     * Retruns true on Error, false on Success (like Teensy functions, opposite of STM32 function)
+    */
     bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_DEFAULT_FIFO);
 
 /**-------------------------------------------------------------
  *     Teensy FlexCAN compatibility functions
  * -------------------------------------------------------------
+ * These return false on success
  */
     bool setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO);
     void setMBFilter(CAN_FLTEN input); /* enable/disable traffic for all MBs (for individual masking) */
