@@ -105,7 +105,9 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
   #define CAN1_RX1_IRQHandler CAN_RX1_IRQHandler
   #define CAN1_SCE_IRQHandler CAN_SCE_IRQHandler
 
-  #ifdef USBCON
+  /** NOTE: USE_USB_INTERRUPT_REMAPPED may be used to use 
+   * different USB IRQs and not block the CAN IRQ handlers */
+  #if defined(USBCON) && !defined(USE_USB_INTERRUPT_REMAPPED)
   #define STM32_CAN1_TX_RX0_BLOCKED_BY_USB
   #endif
 
