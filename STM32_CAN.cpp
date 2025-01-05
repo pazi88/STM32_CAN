@@ -734,8 +734,15 @@ bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint3
   if(_can.handle.Instance == CAN2)
   {
     sFilterConfig.FilterBank += STM32_CAN_CAN2_FILTER_OFFSET;
+    if(sFilterConfig.FilterBank >= STM32_CAN_DUAL_CAN_FILTER_COUNT)
+      return false;
   }
+  else
   #endif
+  if(sFilterConfig.FilterBank >= STM32_CAN_SINGLE_CAN_FILTER_COUNT)
+  {
+    return false;
+  }
   // Enable filter
   return (HAL_CAN_ConfigFilter( &_can.handle, &sFilterConfig ) == HAL_OK);
 }
