@@ -254,6 +254,11 @@ CAN_TypeDef * STM32_CAN::getPeripheral()
   return canPort_rx;
 }
 
+/**-------------------------------------------------------------
+ *     setup functions
+ *     no effect after begin()
+ * -------------------------------------------------------------
+ */
 void STM32_CAN::setIRQPriority(uint32_t preemptPriority, uint32_t subPriority)
 {
   //NOTE: limiting the IRQ prio, but not accounting for group setting
@@ -261,6 +266,28 @@ void STM32_CAN::setIRQPriority(uint32_t preemptPriority, uint32_t subPriority)
   this->subPriority = min(subPriority, MAX_IRQ_PRIO_VALUE);
 }
 
+void STM32_CAN::setMode(Mode mode)
+{
+  _can.handle.Init.Mode = mode;
+}
+
+void STM32_CAN::enableLoopBack( bool yes ) {
+  setMode(yes ? Mode::LOOPBACK : Mode::NORMAL);
+}
+
+void STM32_CAN::enableSilentMode( bool yes ) {
+  setMode(yes ? Mode::SILENT : Mode::NORMAL);
+}
+
+void STM32_CAN::enableSilentLoopBack( bool yes ) {
+  setMode(yes ? Mode::SILENT_LOOPBACK : Mode::NORMAL);
+}
+
+/**-------------------------------------------------------------
+ *     lifecycle functions
+ *     setBaudRate may be called before or after begin
+ * -------------------------------------------------------------
+ */
 // Init and start CAN
 void STM32_CAN::begin( bool retransmission ) {
 
@@ -457,6 +484,12 @@ void STM32_CAN::stop()
   /** Calls Stop internally, clears all errors */
   HAL_CAN_DeInit( &_can.handle );
 }
+
+
+/**-------------------------------------------------------------
+ *     post begin(), setup filters, data transfer
+ * -------------------------------------------------------------
+ */
 
 bool STM32_CAN::write(CAN_message_t &CAN_tx_msg, bool sendMB)
 {
@@ -713,6 +746,12 @@ bool STM32_CAN::setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint3
     return 0;
   }
 }
+
+
+/**-------------------------------------------------------------
+ *     Teensy FlexCAN compatibility functions
+ * -------------------------------------------------------------
+ */
 
 void STM32_CAN::setMBFilter(CAN_BANK bank_num, CAN_FLTEN input)
 {
@@ -1121,23 +1160,6 @@ void STM32_CAN::disableMBInterrupts()
     HAL_NVIC_DisableIRQ(CAN3_RX0_IRQn);
   }
 #endif
-}
-
-void STM32_CAN::setMode(Mode mode)
-{
-  _can.handle.Init.Mode = mode;
-}
-
-void STM32_CAN::enableLoopBack( bool yes ) {
-  setMode(yes ? Mode::LOOPBACK : Mode::NORMAL);
-}
-
-void STM32_CAN::enableSilentMode( bool yes ) {
-  setMode(yes ? Mode::SILENT : Mode::NORMAL);
-}
-
-void STM32_CAN::enableSilentLoopBack( bool yes ) {
-  setMode(yes ? Mode::SILENT_LOOPBACK : Mode::NORMAL);
 }
 
 void STM32_CAN::enableFIFO(bool status)

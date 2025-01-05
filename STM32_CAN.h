@@ -253,24 +253,55 @@ typedef struct {
 class STM32_CAN {
 
   public:
+    enum Mode {
+      NORMAL               = CAN_MODE_NORMAL,
+      SILENT               = CAN_MODE_SILENT,
+      SILENT_LOOPBACK      = CAN_MODE_SILENT_LOOPBACK,
+      LOOPBACK             = CAN_MODE_LOOPBACK
+    };
+
+    enum FilterAction {
+      STORE_FIFO0,
+      STORE_FIFO1,
+    };
+
     // Default buffer sizes are set to 16. But this can be changed by using constructor in main code.
     STM32_CAN(uint32_t rx, uint32_t tx = PNUM_NOT_DEFINED, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     STM32_CAN(PinName rx, PinName tx = NC, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     STM32_CAN(CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     //legacy for compatibility
     STM32_CAN(CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+/**-------------------------------------------------------------
+ *     setup functions
+ *     no effect after begin()
+ * -------------------------------------------------------------
+ */
     void setIRQPriority(uint32_t preemptPriority, uint32_t subPriority);
+
+    void setMode(Mode mode);
+    void enableLoopBack(bool yes = 1);
+    void enableSilentMode(bool yes = 1);
+    void enableSilentLoopBack(bool yes = 1);
+
+/**-------------------------------------------------------------
+ *     lifecycle functions
+ *     setBaudRate may be called before or after begin
+ * -------------------------------------------------------------
+ */
     // Begin. By default the automatic retransmission is enabled. If it causes problems, use begin(false) to disable it.
     void begin(bool retransmission = false);
     void end(void);
+
     void setBaudRate(uint32_t baud);
+
+/**-------------------------------------------------------------
+ *     post begin(), setup filters, data transfer
+ * -------------------------------------------------------------
+ */
     bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
     bool read(CAN_message_t &CAN_rx_msg);
+
     // Manually set STM32 filter bank parameters
-    enum FilterAction {
-      STORE_FIFO0,
-      STORE_FIFO1
-    };
     /** set filter state and action, keeps filter rules intact */
     bool setFilter(uint8_t bank_num, bool state, FilterAction action = CAN_FILTER_DEFAULT_ACTION);
     bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
@@ -280,24 +311,17 @@ class STM32_CAN {
     bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
     // Legacy, broken! Only works correctly for 32 bit mask mode
     bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_DEFAULT_FIFO);
-    // Teensy FlexCAN style "set filter" -functions
+
+/**-------------------------------------------------------------
+ *     Teensy FlexCAN compatibility functions
+ * -------------------------------------------------------------
+ */
     bool setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO);
     void setMBFilter(CAN_FLTEN input); /* enable/disable traffic for all MBs (for individual masking) */
     void setMBFilter(CAN_BANK bank_num, CAN_FLTEN input); /* set specific MB to accept/deny traffic */
     bool setMBFilter(CAN_BANK bank_num, uint32_t id1, IDE = AUTO); /* input 1 ID to be filtered */
     bool setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE = AUTO); /* input 2 ID's to be filtered */
 
-    enum Mode {
-      NORMAL               = CAN_MODE_NORMAL,
-      LOOPBACK             = CAN_MODE_LOOPBACK,
-      SILENT               = CAN_MODE_SILENT,
-      SILENT_LOOPBACK      = CAN_MODE_SILENT_LOOPBACK
-    };
-
-    void setMode(Mode mode);
-    void enableLoopBack(bool yes = 1);
-    void enableSilentMode(bool yes = 1);
-    void enableSilentLoopBack(bool yes = 1);
     void enableFIFO(bool status = 1);
     void enableMBInterrupts();
     void disableMBInterrupts();
