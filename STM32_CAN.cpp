@@ -208,12 +208,13 @@ void STM32_CAN::init(void)
   baudrate = 0UL;
   filtersInitialized = false;
 
-  _can.handle.Init.TimeTriggeredMode = DISABLE;
-  _can.handle.Init.AutoBusOff = DISABLE;
+  setTimestampCounter(false);
+  setAutoBusOffRecovery(false);
   _can.handle.Init.AutoWakeUp = DISABLE;
-  _can.handle.Init.ReceiveFifoLocked  = DISABLE;
-  _can.handle.Init.TransmitFifoPriority = ENABLE;
-  _can.handle.Init.Mode = MODE::NORMAL;
+  setRxFIFOLock(false);
+  setTxBufferMode(TX_BUFFER_MODE::FIFO);
+  setMode(MODE::NORMAL);
+  setAutoRetransmission(true);
 }
 
 CAN_TypeDef * STM32_CAN::getPeripheral()
@@ -266,6 +267,27 @@ void STM32_CAN::setIRQPriority(uint32_t preemptPriority, uint32_t subPriority)
   this->subPriority = min(subPriority, MAX_IRQ_PRIO_VALUE);
 }
 
+void STM32_CAN::setAutoRetransmission(bool enabled)
+{
+  _can.handle.Init.AutoRetransmission = enabled ? (ENABLE) : (DISABLE);
+}
+
+void STM32_CAN::setRxFIFOLock(bool fifo0locked, bool fifo1locked)
+{
+  (void)fifo1locked;
+  _can.handle.Init.ReceiveFifoLocked = fifo0locked ? (ENABLE) : (DISABLE);
+}
+
+void STM32_CAN::setTxBufferMode(TX_BUFFER_MODE mode)
+{
+  _can.handle.Init.TransmitFifoPriority = (FunctionalState)mode;
+}
+
+void STM32_CAN::setTimestampCounter(bool enabled)
+{
+  _can.handle.Init.TimeTriggeredMode = enabled ? (ENABLE) : (DISABLE);
+}
+
 void STM32_CAN::setMode(MODE mode)
 {
   _can.handle.Init.Mode = mode;
@@ -281,6 +303,11 @@ void STM32_CAN::enableSilentMode( bool yes ) {
 
 void STM32_CAN::enableSilentLoopBack( bool yes ) {
   setMode(yes ? MODE::SILENT_LOOPBACK : MODE::NORMAL);
+}
+
+void STM32_CAN::setAutoBusOffRecovery(bool enabled)
+{
+  _can.handle.Init.AutoBusOff = enabled ? (ENABLE) : (DISABLE);
 }
 
 /**-------------------------------------------------------------
@@ -379,8 +406,7 @@ void STM32_CAN::begin( bool retransmission ) {
   }
 #endif
 
-  if (retransmission){ _can.handle.Init.AutoRetransmission  = ENABLE; }
-  else { _can.handle.Init.AutoRetransmission  = DISABLE; }
+  setAutoRetransmission(retransmission);
   
   filtersInitialized = false;
 

@@ -265,6 +265,12 @@ class STM32_CAN {
       STORE_FIFO1,
     };
 
+    enum TX_BUFFER_MODE {
+      FIFO  = ENABLE, /** Sequencial transfers order */
+      QUEUE = DISABLE /** Sequence based on msg ID priorites. Only effects hardware queue. */
+    };
+
+
     // Default buffer sizes are set to 16. But this can be changed by using constructor in main code.
     STM32_CAN(uint32_t rx, uint32_t tx = PNUM_NOT_DEFINED, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     STM32_CAN(PinName rx, PinName tx = NC, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
@@ -278,10 +284,22 @@ class STM32_CAN {
  */
     void setIRQPriority(uint32_t preemptPriority, uint32_t subPriority);
 
+    /** send message again on arbitration failure */
+    void setAutoRetransmission(bool enabled);
+
+    /** If locked incoming msg is dropped when fifo is full,
+     *  when unlocked last msg in fifo is overwritten
+     *  2nd arg has no effect, setting effects both fifos */
+    void setRxFIFOLock(bool fifo0locked, bool fifo1locked = true);
+    void setTxBufferMode(TX_BUFFER_MODE mode);
+    void setTimestampCounter(bool enabled);
+
     void setMode(MODE mode);
     void enableLoopBack(bool yes = 1);
     void enableSilentMode(bool yes = 1);
     void enableSilentLoopBack(bool yes = 1);
+
+    void setAutoBusOffRecovery(bool enabled);
 
 /**-------------------------------------------------------------
  *     lifecycle functions
