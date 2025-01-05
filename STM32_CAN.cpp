@@ -566,6 +566,23 @@ bool STM32_CAN::read(CAN_message_t &CAN_rx_msg)
   return ret;
 }
 
+uint8_t STM32_CAN::getFilterBankCount(IDE std_ext)
+{
+  (void)std_ext;
+  if(_can.handle.Instance == nullptr) return 0;
+  #ifdef CAN2
+  if(_can.handle.Instance == CAN1)
+  {
+    return STM32_CAN_CAN2_FILTER_OFFSET;
+  }
+  if(_can.handle.Instance == CAN2)
+  {
+    return STM32_CAN_DUAL_CAN_FILTER_COUNT - STM32_CAN_CAN2_FILTER_OFFSET;
+  }
+  #endif
+  return STM32_CAN_SINGLE_CAN_FILTER_COUNT;
+}
+
 static uint32_t format32bitFilter(uint32_t id, IDE std_ext, bool mask)
 {
   uint32_t id_reg;

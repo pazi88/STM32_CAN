@@ -301,6 +301,13 @@ class STM32_CAN {
     bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
     bool read(CAN_message_t &CAN_rx_msg);
 
+    /** returns number of available filter banks. If hasSharedFilterBanks() is false counts may differ by id type. */
+    uint8_t getFilterBankCount(IDE std_ext = STD);
+    /** returns if filter count and index are shared (true) or dedicated per id type (false) */
+    bool hasSharedFilterBanks() {
+      return true;
+    }
+
     /** 
      * Manually set STM32 filter bank parameters
      * These return true on success
