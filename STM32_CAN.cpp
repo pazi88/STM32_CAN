@@ -612,6 +612,7 @@ static uint32_t format16bitFilter(uint32_t id, IDE std_ext, bool mask)
 bool STM32_CAN::setFilter(uint8_t bank_num, bool enabled, FilterAction action)
 {
   CAN_TypeDef *can_ip = _can.handle.Instance;
+  if(!_can.handle.Instance) return false;
   /** CAN2 shares filter banks with CAN1
    * Driver allocates equal amount to each
    * Filter Banks located at CAN1 base address
