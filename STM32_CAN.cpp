@@ -1006,7 +1006,7 @@ bool STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
   uint8_t bs2;
   uint16_t prescaler;
 
-  const uint32_t frequency = getAPB1Clock();
+  const uint32_t frequency = getCanPeripheralClock();
 
   if (frequency == 48000000) {
     if (lookupBaudrate(CanHandle, baud, BAUD_RATE_TABLE_48M)) return true;
@@ -1049,9 +1049,9 @@ bool STM32_CAN::calculateBaudrate(CAN_HandleTypeDef *CanHandle, int baud)
   return false;
 }
 
-uint32_t STM32_CAN::getAPB1Clock()
+uint32_t STM32_CAN::getCanPeripheralClock()
 {
-  //APB1 is PCLK1
+  //All bxCAN get clocked by APB1 / PCLK1
   return HAL_RCC_GetPCLK1Freq();
 }
 
