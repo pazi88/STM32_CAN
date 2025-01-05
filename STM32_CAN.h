@@ -253,14 +253,14 @@ typedef struct {
 class STM32_CAN {
 
   public:
-    enum Mode {
+    enum MODE {
       NORMAL               = CAN_MODE_NORMAL,
       SILENT               = CAN_MODE_SILENT,
       SILENT_LOOPBACK      = CAN_MODE_SILENT_LOOPBACK,
       LOOPBACK             = CAN_MODE_LOOPBACK
     };
 
-    enum FilterAction {
+    enum FILTER_ACTION {
       STORE_FIFO0,
       STORE_FIFO1,
     };
@@ -278,7 +278,7 @@ class STM32_CAN {
  */
     void setIRQPriority(uint32_t preemptPriority, uint32_t subPriority);
 
-    void setMode(Mode mode);
+    void setMode(MODE mode);
     void enableLoopBack(bool yes = 1);
     void enableSilentMode(bool yes = 1);
     void enableSilentLoopBack(bool yes = 1);
@@ -313,12 +313,12 @@ class STM32_CAN {
      * These return true on success
      */
     /** set filter state and action, keeps filter rules intact */
-    bool setFilter(uint8_t bank_num, bool enabled, FilterAction action = CAN_FILTER_DEFAULT_ACTION);
-    bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
-    bool setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
-    bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
-    bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
-    bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FilterAction action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilter(uint8_t bank_num, bool enabled, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION);
+    bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
     /** Legacy, broken! Only works correctly for 32 bit mask mode 
      * Retruns true on Error, false on Success (like Teensy functions, opposite of STM32 function)
     */
