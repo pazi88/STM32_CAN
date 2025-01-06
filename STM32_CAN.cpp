@@ -2,7 +2,7 @@
 
 #include "core_debug.h"
 
-#ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
+#if defined(HAL_CEC_MODULE_ENABLED) && defined(STM32_CAN1_SHARED_WITH_CEC)
 /** Pointer to CEC_HandleTypeDef structure that contains 
  * the configuration information for the specified CEC.
  * Application have to declare them properly to be able to call
@@ -1174,7 +1174,7 @@ void STM32_CAN::disableMBInterrupts()
   if (_can.handle.Instance == CAN1)
   {
     #ifdef CAN1_IRQn_AIO
-    #ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
+    #if defined(HAL_CEC_MODULE_ENABLED) && defined(STM32_CAN1_SHARED_WITH_CEC)
     //only disable if cec instance is not set/used
     if(!phcec)
     #endif
@@ -1305,7 +1305,7 @@ extern "C" void CAN1_IRQHandler_AIO(void)
   if(canObj[CAN1_INDEX]) {
     HAL_CAN_IRQHandler(&canObj[CAN1_INDEX]->handle);
   }
-  #ifdef HAL_CEC_MODULE_ENABLED && defined(STM32_CAN1_SHARED_WITH_CEC)
+  #if defined(HAL_CEC_MODULE_ENABLED) && defined(STM32_CAN1_SHARED_WITH_CEC)
   if(phcec)
   {
     HAL_CEC_IRQHandler(phcec);
