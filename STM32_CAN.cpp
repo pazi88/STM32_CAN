@@ -90,6 +90,7 @@ bool STM32_CAN::allocatePeripheral()
 
 bool STM32_CAN::freePeripheral()
 {
+  if (_can.handle.Instance == nullptr) return false;
   can_index_t index = get_can_index(_can.handle.Instance);
   if(index >= CAN_NUM)
   {
@@ -107,6 +108,7 @@ bool STM32_CAN::freePeripheral()
 
 bool STM32_CAN::hasPeripheral()
 {
+  if (_can.handle.Instance == nullptr) return false;
   can_index_t index = get_can_index(_can.handle.Instance);
   if(index >= CAN_NUM)
   {
