@@ -380,7 +380,7 @@ class STM32_CAN {
   private:
     void      init(void);
     CAN_TypeDef * getPeripheral(void);
-    bool      allocatePeripheral(void);
+    bool      allocatePeripheral(CAN_TypeDef *instance);
     bool      freePeripheral(void);
     bool      hasPeripheral(void);
     void      start(void);
