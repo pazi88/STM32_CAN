@@ -204,6 +204,11 @@ STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize,
   init();
 }
 
+STM32_CAN::~STM32_CAN()
+{
+  end();
+}
+
 void STM32_CAN::init(void)
 {
   _can.__this = (void*)this;

@@ -279,6 +279,7 @@ class STM32_CAN {
     STM32_CAN(CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
     //legacy for compatibility
     STM32_CAN(CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+    ~STM32_CAN();
 /**-------------------------------------------------------------
  *     setup functions
  *     no effect after begin()
