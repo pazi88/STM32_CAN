@@ -268,8 +268,8 @@ class STM32_CAN {
     };
 
     enum TX_BUFFER_MODE {
-      FIFO  = ENABLE, /** Sequencial transfers order */
-      QUEUE = DISABLE /** Sequence based on msg ID priorites. Only effects hardware queue. */
+      FIFO  = ENABLE, /** Sequential transfers order */
+      QUEUE = DISABLE /** Sequence based on msg ID priorities. Only effects hardware queue. */
     };
 
 
@@ -341,7 +341,7 @@ class STM32_CAN {
     bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
     bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
     /** Legacy, broken! Only works correctly for 32 bit mask mode 
-     * Retruns true on Error, false on Success (like Teensy functions, opposite of STM32 function)
+     * Returns true on Error, false on Success (like Teensy functions, opposite of STM32 function)
     */
     bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_DEFAULT_FIFO);
 

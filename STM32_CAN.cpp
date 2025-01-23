@@ -144,7 +144,7 @@ STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE 
   init();
 }
 
-//lagacy pin config for compatibility
+//legacy pin config for compatibility
 STM32_CAN::STM32_CAN( CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize, TXQUEUE_TABLE txSize )
   : rx(NC), tx(NC), sizeRxBuffer(rxSize), sizeTxBuffer(txSize),
     preemptPriority(MAX_IRQ_PRIO_VALUE), subPriority(0)
