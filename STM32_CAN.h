@@ -19,23 +19,131 @@ to same folder with sketch and haven #define HAL_CAN_MODULE_ENABLED there. See e
 #ifndef STM32_CAN_H
 #define STM32_CAN_H
 
-// couple of workarounds
-#if defined(STM32F3xx)
-  #define GPIO_AF9_CAN1 GPIO_AF9_CAN
-  #define CAN1_RX0_IRQn CAN_RX0_IRQn
-  #define CAN1_TX_IRQn CAN_TX_IRQn
-  #define GPIO_SPEED_FREQ_VERY_HIGH GPIO_SPEED_FREQ_HIGH
-  #define CAN1_TX_IRQHandler CAN_TX_IRQHandler
-  #define CAN1_RX0_IRQHandler CAN_RX0_IRQHandler
-#endif
-
-#if defined(STM32F0xx)
-  #define CAN1_TX_IRQn CEC_CAN_IRQn
-  #define CAN1_RX0_IRQn CEC_CAN_IRQn
-  #define CAN1_RX0_IRQHandler CEC_CAN_IRQHandler
-#endif
-
 #include <Arduino.h>
+
+/** Handling special cases for IRQ Handlers */
+#if defined(STM32F0xx)
+#if defined(STM32F042x6) || defined(STM32F072xB) || defined(STM32F091xC) || defined(STM32F098xx)
+
+  /**
+   * NOTE: STM32F0 share IRQ Handler with HDMI CEC
+   * and there is only a single IRQ Handler not 4
+   * CEC_CAN_IRQn | CEC_CAN_IRQHandler
+   * 
+   * define all in one alias for IRQn and Handler
+   */
+  #define CAN1_IRQn_AIO       CEC_CAN_IRQn
+  #define CAN1_IRQHandler_AIO CEC_CAN_IRQHandler
+  /**
+   * NOTE: CAN IRQ is shared with CEC
+   * To use CEC with CAN declare:
+   * CEC_HandleTypeDef * phcec;
+   * and point to your CEC handle.
+   * Internal IRQ Handler will call CEC Handler as well.
+   */
+  #define STM32_CAN1_SHARED_WITH_CEC
+
+#endif
+#endif
+
+#if defined(STM32F1xx)
+#if defined(STM32F103x6) || defined(STM32F103xB) || defined(STM32F103xE) || defined(STM32F103xG)
+/**
+ * NOTE: STM32F103xx uses shared IRQ Handler with USB
+ * USB_HP_CAN1_TX_IRQn  | USB_HP_CAN1_TX_IRQHandler
+ * USB_LP_CAN1_RX0_IRQn | USB_LP_CAN1_RX0_IRQHandler
+ * 
+ * the CMSIS files define already aliases for the CAN *_IRQHandler and *_IRQn
+ * conforming with standard naming convention:
+ * CAN1_TX_IRQn  | CAN1_TX_IRQHandler
+ * CAN1_RX0_IRQn | CAN1_RX0_IRQHandler
+ * 
+ * when USB is enabled the USBDevice driver also implements these making a concurrent use impossible.
+ * 
+ * Following are unaffected:
+ * CAN1_RX1_IRQn | CAN1_RX1_IRQHandler
+ * CAN1_SCE_IRQn | CAN1_SCE_IRQHandler
+ */
+
+#ifdef USBCON
+#define STM32_CAN1_TX_RX0_BLOCKED_BY_USB
+#endif
+
+#endif
+#endif
+
+#if defined(STM32F3xx)
+#if defined(STM32F302x8) || defined(STM32F302xC) || defined(STM32F302xE)\
+ || defined(STM32F303xC) || defined(STM32F303xE)
+
+  /**
+   * NOTE: STM32F3 with USB share IRQ Handler with it
+   * USB_HP_CAN_TX_IRQn  | USB_HP_CAN_TX_IRQHandler
+   * USB_LP_CAN_RX0_IRQn | USB_LP_CAN_RX0_IRQHandler
+   * 
+   * the CMSIS files define already aliases for the CAN *_IRQHandler and *_IRQn
+   * missing peripheral index:
+   * CAN_TX_IRQn  | CAN_TX_IRQHandler
+   * CAN_RX0_IRQn | CAN_RX0_IRQHandler
+   * 
+   * when USB is enabled the USBDevice driver also implements these making a concurrent use impossible.
+   * 
+   * Following are unaffected:
+   * CAN_RX1_IRQn | CAN_RX1_IRQHandler
+   * CAN_SCE_IRQn | CAN_SCE_IRQHandler
+   * 
+   * define more aliases with peripheral index
+   */
+
+  #define CAN1_TX_IRQn      USB_HP_CAN_TX_IRQn
+  #define CAN1_RX0_IRQn     USB_LP_CAN_RX0_IRQn
+  #define CAN1_RX1_IRQn     CAN_RX1_IRQn
+  #define CAN1_SCE_IRQn     CAN_SCE_IRQn
+
+  #define CAN1_TX_IRQHandler  USB_HP_CAN_TX_IRQHandler
+  #define CAN1_RX0_IRQHandler USB_LP_CAN_RX0_IRQHandler
+  #define CAN1_RX1_IRQHandler CAN_RX1_IRQHandler
+  #define CAN1_SCE_IRQHandler CAN_SCE_IRQHandler
+
+  /** NOTE: USE_USB_INTERRUPT_REMAPPED may be used to use 
+   * different USB IRQs and not block the CAN IRQ handlers */
+  #if defined(USBCON) && !defined(USE_USB_INTERRUPT_REMAPPED)
+  #define STM32_CAN1_TX_RX0_BLOCKED_BY_USB
+  #endif
+
+#elif defined(STM32F303x8) || defined(STM32F328xx) || defined(STM32F334x8)\
+ || defined(STM32F358xx) || defined(STM32F373xC)\
+ || defined(STM32F378xx) || defined(STM32F398xx)
+
+  /**
+   * NOTE: STM32F3 without USB define symbols without peripheral index
+   * define more aliases with peripheral index
+   */
+
+  #define CAN1_TX_IRQn      CAN_TX_IRQn
+  #define CAN1_RX0_IRQn     CAN_RX0_IRQn
+  #define CAN1_RX1_IRQn     CAN_RX1_IRQn
+  #define CAN1_SCE_IRQn     CAN_SCE_IRQn
+
+  #define CAN1_TX_IRQHandler  CAN_TX_IRQHandler
+  #define CAN1_RX0_IRQHandler CAN_RX0_IRQHandler
+  #define CAN1_RX1_IRQHandler CAN_RX1_IRQHandler
+  #define CAN1_SCE_IRQHandler CAN_SCE_IRQHandler
+#endif
+#endif
+
+#if defined(STM32_CAN1_TX_RX0_BLOCKED_BY_USB) && !defined(STM32_CAN_USB_WORKAROUND_POLLING)
+#error "USB and CAN interrupts are shared on the F1/F3 platform, driver is not compatible with USBDevice of Arduino core. Can define STM32_CAN_USB_WORKAROUND_POLLING to disable error msg and call STM32_CAN_Poll_IRQ_Handler to poll for Tx IRQ events. Only use FIFO 1."
+#elif defined(USBCON) && defined(STM32_CAN_USB_WORKAROUND_POLLING)
+#warning "CAN IRQ Handler is used by USBDevice driver, call STM32_CAN_Poll_IRQ_Handler() frequently to handle CAN events."
+extern "C" void STM32_CAN_Poll_IRQ_Handler(void);
+#define CAN_FILTER_DEFAULT_FIFO   CAN_FILTER_FIFO1
+#define CAN_FILTER_DEFAULT_ACTION STORE_FIFO1
+#else
+#define CAN_FILTER_DEFAULT_FIFO   CAN_FILTER_FIFO0
+#define CAN_FILTER_DEFAULT_ACTION STORE_FIFO0
+#endif
+
 
 // This struct is directly copied from Teensy FlexCAN library to retain compatibility with it. Not all are in use with STM32.
 // Source: https://github.com/tonton81/FlexCAN_T4/
@@ -138,28 +246,116 @@ typedef enum IDE {
   AUTO = 2
 } IDE;
 
+typedef struct {
+  void * __this;
+  CAN_HandleTypeDef handle;
+  uint32_t bus;
+} stm32_can_t;
+
 class STM32_CAN {
 
   public:
+    enum MODE {
+      NORMAL               = CAN_MODE_NORMAL,
+      SILENT               = CAN_MODE_SILENT,
+      SILENT_LOOPBACK      = CAN_MODE_SILENT_LOOPBACK,
+      LOOPBACK             = CAN_MODE_LOOPBACK
+    };
+
+    enum FILTER_ACTION {
+      STORE_FIFO0,
+      STORE_FIFO1,
+    };
+
+    enum TX_BUFFER_MODE {
+      FIFO  = ENABLE, /** Sequencial transfers order */
+      QUEUE = DISABLE /** Sequence based on msg ID priorites. Only effects hardware queue. */
+    };
+
+
     // Default buffer sizes are set to 16. But this can be changed by using constructor in main code.
+    STM32_CAN(uint32_t rx, uint32_t tx = PNUM_NOT_DEFINED, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+    STM32_CAN(PinName rx, PinName tx = NC, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+    STM32_CAN(CAN_TypeDef* canPort, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+    //legacy for compatibility
     STM32_CAN(CAN_TypeDef* canPort, CAN_PINS pins, RXQUEUE_TABLE rxSize = RX_SIZE_16, TXQUEUE_TABLE txSize = TX_SIZE_16);
+    ~STM32_CAN();
+/**-------------------------------------------------------------
+ *     setup functions
+ *     no effect after begin()
+ * -------------------------------------------------------------
+ */
+    void setIRQPriority(uint32_t preemptPriority, uint32_t subPriority);
+
+    /** send message again on arbitration failure */
+    void setAutoRetransmission(bool enabled);
+
+    /** If locked incoming msg is dropped when fifo is full,
+     *  when unlocked last msg in fifo is overwritten
+     *  2nd arg has no effect, setting effects both fifos */
+    void setRxFIFOLock(bool fifo0locked, bool fifo1locked = true);
+    void setTxBufferMode(TX_BUFFER_MODE mode);
+    void setTimestampCounter(bool enabled);
+
+    void setMode(MODE mode);
+    void enableLoopBack(bool yes = 1);
+    void enableSilentMode(bool yes = 1);
+    void enableSilentLoopBack(bool yes = 1);
+
+    void setAutoBusOffRecovery(bool enabled);
+
+/**-------------------------------------------------------------
+ *     lifecycle functions
+ *     setBaudRate may be called before or after begin
+ * -------------------------------------------------------------
+ */
     // Begin. By default the automatic retransmission is enabled. If it causes problems, use begin(false) to disable it.
     void begin(bool retransmission = false);
+    void end(void);
+
     void setBaudRate(uint32_t baud);
+
+/**-------------------------------------------------------------
+ *     post begin(), setup filters, data transfer
+ * -------------------------------------------------------------
+ */
     bool write(CAN_message_t &CAN_tx_msg, bool sendMB = false);
     bool read(CAN_message_t &CAN_rx_msg);
-    // Manually set STM32 filter bank parameters
-    bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_FIFO0);
-    // Teensy FlexCAN style "set filter" -functions
+
+    /** returns number of available filter banks. If hasSharedFilterBanks() is false counts may differ by id type. */
+    uint8_t getFilterBankCount(IDE std_ext = STD);
+    /** returns if filter count and index are shared (true) or dedicated per id type (false) */
+    bool hasSharedFilterBanks() {
+      return true;
+    }
+
+    /** 
+     * Manually set STM32 filter bank parameters
+     * These return true on success
+     */
+    /** set filter state and action, keeps filter rules intact */
+    bool setFilter(uint8_t bank_num, bool enabled, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION);
+    bool setFilterSingleMask(uint8_t bank_num, uint32_t id, uint32_t mask, IDE std_ext, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterDualID(uint8_t bank_num, uint32_t id1, uint32_t id2, IDE std_ext1, IDE std_ext2, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterDualMask(uint8_t bank_num, uint32_t id1, uint32_t mask1, IDE std_ext1, uint32_t id2, uint32_t mask2, IDE std_ext2, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterQuadID(uint8_t bank_num, uint32_t id1, IDE std_ext1, uint32_t id2, IDE std_ext2, uint32_t id3, IDE std_ext3, uint32_t id4, IDE std_ext4, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    bool setFilterRaw(uint8_t bank_num, uint32_t id, uint32_t mask, uint32_t filter_mode, uint32_t filter_scale, FILTER_ACTION action = CAN_FILTER_DEFAULT_ACTION, bool enabled = true);
+    /** Legacy, broken! Only works correctly for 32 bit mask mode 
+     * Retruns true on Error, false on Success (like Teensy functions, opposite of STM32 function)
+    */
+    bool setFilter(uint8_t bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO, uint32_t filter_mode = CAN_FILTERMODE_IDMASK, uint32_t filter_scale = CAN_FILTERSCALE_32BIT, uint32_t fifo = CAN_FILTER_DEFAULT_FIFO);
+
+/**-------------------------------------------------------------
+ *     Teensy FlexCAN compatibility functions
+ * -------------------------------------------------------------
+ * These return false on success
+ */
     bool setMBFilterProcessing(CAN_BANK bank_num, uint32_t filter_id, uint32_t mask, IDE = AUTO);
     void setMBFilter(CAN_FLTEN input); /* enable/disable traffic for all MBs (for individual masking) */
     void setMBFilter(CAN_BANK bank_num, CAN_FLTEN input); /* set specific MB to accept/deny traffic */
     bool setMBFilter(CAN_BANK bank_num, uint32_t id1, IDE = AUTO); /* input 1 ID to be filtered */
     bool setMBFilter(CAN_BANK bank_num, uint32_t id1, uint32_t id2, IDE = AUTO); /* input 2 ID's to be filtered */
 
-    void enableLoopBack(bool yes = 1);
-    void enableSilentMode(bool yes = 1);
-    void enableSilentLoopBack(bool yes = 1);
     void enableFIFO(bool status = 1);
     void enableMBInterrupts();
     void disableMBInterrupts();
@@ -183,19 +379,27 @@ class STM32_CAN {
     uint16_t sizeTxBuffer;
 
   private:
+    void      init(void);
+    CAN_TypeDef * getPeripheral(void);
+    bool      allocatePeripheral(CAN_TypeDef *instance);
+    bool      freePeripheral(void);
+    bool      hasPeripheral(void);
+    void      start(void);
+    void      stop(void);
     void      initializeFilters();
     bool      isInitialized() { return rx_buffer != 0; }
     void      initRingBuffer(RingbufferTypeDef &ring, volatile CAN_message_t *buffer, uint32_t size);
     void      initializeBuffers(void);
+    void      freeBuffers(void);
     bool      isRingBufferEmpty(RingbufferTypeDef &ring);
     uint32_t  ringBufferCount(RingbufferTypeDef &ring);
 
     template <typename T, size_t N>
-    bool      lookupBaudrate(CAN_HandleTypeDef *CanHandle, int Baudrate, const T(&table)[N]);
-    void      calculateBaudrate(CAN_HandleTypeDef *CanHandle, int Baudrate);
-    void      setBaudRateValues(CAN_HandleTypeDef *CanHandle, uint16_t prescaler, uint8_t timeseg1,
-                                                              uint8_t timeseg2, uint8_t sjw);
-    uint32_t  getAPB1Clock(void);
+    bool      lookupBaudrate(int Baudrate, const T(&table)[N]);
+    bool      calculateBaudrate(int Baudrate);
+    void      setBaudRateValues(uint16_t prescaler, uint8_t timeseg1,
+                                uint8_t timeseg2, uint8_t sjw);
+    uint32_t  getCanPeripheralClock(void);
 
     volatile CAN_message_t *rx_buffer = nullptr;
     volatile CAN_message_t *tx_buffer = nullptr;
@@ -240,10 +444,17 @@ class STM32_CAN {
     };
 
     bool     _canIsActive = false;
-    CAN_PINS _pins;
 
-    CAN_HandleTypeDef *n_pCanHandle;
-    CAN_TypeDef*      _canPort;
+    uint32_t baudrate;
+    bool filtersInitialized;
+
+    PinName rx;
+    PinName tx;
+
+    uint32_t preemptPriority;
+    uint32_t subPriority;
+
+    stm32_can_t _can;
 
 };
 
