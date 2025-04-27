@@ -353,7 +353,9 @@ void STM32_CAN::begin( bool retransmission ) {
    * This lets loopback only tests without external circuitry sill function.
    */
   uint32_t rx_func = pinmap_function(rx, PinMap_CAN_RD);
-  pin_function(rx, STM_PIN_DATA(STM_MODE_AF_PP, GPIO_PULLUP, STM_PIN_AFNUM(rx_func)));
+  rx_func = (rx_func & ~(STM_PIN_PUPD_MASK << STM_PIN_PUPD_SHIFT)) 
+          | (GPIO_PULLUP << STM_PIN_PUPD_SHIFT);
+  pin_function(rx, rx_func);
   if(tx != NC)
   {
     pin_function(tx, pinmap_function(tx, PinMap_CAN_TD));
