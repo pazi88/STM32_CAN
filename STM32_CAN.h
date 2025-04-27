@@ -400,6 +400,7 @@ class STM32_CAN {
     void      setBaudRateValues(uint16_t prescaler, uint8_t timeseg1,
                                 uint8_t timeseg2, uint8_t sjw);
     uint32_t  getCanPeripheralClock(void);
+    uint32_t  fixPinFunction(uint32_t function);
 
     volatile CAN_message_t *rx_buffer = nullptr;
     volatile CAN_message_t *tx_buffer = nullptr;
