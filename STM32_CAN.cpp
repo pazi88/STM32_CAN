@@ -353,10 +353,12 @@ void STM32_CAN::begin( bool retransmission ) {
    * This lets loopback only tests without external circuitry sill function.
    */
   uint32_t rx_func = pinmap_function(rx, PinMap_CAN_RD);
-  pin_function(rx, STM_PIN_DATA(STM_MODE_AF_PP, GPIO_PULLUP, STM_PIN_AFNUM(rx_func)));
+  rx_func = (rx_func & ~(STM_PIN_PUPD_MASK << STM_PIN_PUPD_SHIFT)) 
+          | (GPIO_PULLUP << STM_PIN_PUPD_SHIFT);
+  pin_function(rx, fixPinFunction(rx_func));
   if(tx != NC)
   {
-    pin_function(tx, pinmap_function(tx, PinMap_CAN_TD));
+    pin_function(tx, fixPinFunction(pinmap_function(tx, PinMap_CAN_TD)));
   }
 
   // Configure CAN
@@ -1151,6 +1153,25 @@ uint32_t STM32_CAN::getCanPeripheralClock()
 {
   //All bxCAN get clocked by APB1 / PCLK1
   return HAL_RCC_GetPCLK1Freq();
+}
+
+uint32_t STM32_CAN::fixPinFunction(uint32_t function)
+{
+  #ifdef STM32F1xx
+  /**
+   * NOTE: F103 pinmaps defines AFIO_NONE for first (default) pinmaping.
+   * should be AFIO_CAN1_1.
+   */
+  uint32_t af = STM_PIN_AFNUM(function);
+  if(af == AFIO_NONE)
+  {
+    af = AFIO_CAN1_1;
+  }
+
+  function &= ~(STM_PIN_AFNUM_MASK << STM_PIN_AFNUM_SHIFT); 
+  function |= ((af & STM_PIN_AFNUM_MASK) << STM_PIN_AFNUM_SHIFT);
+  #endif
+  return function;
 }
 
 void STM32_CAN::enableMBInterrupts()
