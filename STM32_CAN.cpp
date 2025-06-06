@@ -20,6 +20,8 @@ extern CEC_HandleTypeDef * phcec;
 
 constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_48M[];
 constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_45M[];
+constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_42M[];
+constexpr Baudrate_entry_t STM32_CAN::BAUD_RATE_TABLE_36M[];
 
 uint32_t test = 0;
 
@@ -1112,6 +1114,10 @@ bool STM32_CAN::calculateBaudrate(int baud)
     if (lookupBaudrate(baud, BAUD_RATE_TABLE_48M)) return true;
   } else if (frequency == 45000000) {
     if (lookupBaudrate(baud, BAUD_RATE_TABLE_45M)) return true;
+  } else if (frequency == 42000000) {
+    if (lookupBaudrate(baud, BAUD_RATE_TABLE_42M)) return true;
+  } else if (frequency == 36000000) {
+    if (lookupBaudrate(baud, BAUD_RATE_TABLE_36M)) return true;
   }
 
   /* this loop seeks a precise baudrate match, with the sample point positioned
