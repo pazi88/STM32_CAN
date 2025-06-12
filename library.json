@@ -1,0 +1,22 @@
+{
+    "name": "STM32_CAN",
+    "keywords": "CAN, CAN-bus, STM32, arduino",
+    "description": "CAN bus Library for Arduino STM32",
+    "version": "1.2.2",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/pazi88/STM32_CAN.git"
+    },
+    "frameworks": "arduino",
+    "platforms": "ststm32",
+    "authors":
+    [
+      {
+         "name": "Pasi Kemppainen",
+         "email": "pazi88@gmail.com",
+         "url": "https://github.com/pazi88/",
+         "maintainer": true
+      }
+    ]
+}
